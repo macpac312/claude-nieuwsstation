@@ -1,5 +1,8 @@
 import { Plugin, WorkspaceLeaf, ItemView, Notice, TFile } from "obsidian";
 import { spawn } from "child_process";
+import { BriefingView, BRIEFING_VIEW_TYPE } from "./BriefingView";
+import { join } from "path";
+import { existsSync, readdirSync } from "fs";
 
 const VIEW_TYPE = "nieuwsstation-command-center";
 
@@ -482,7 +485,9 @@ print(json.dumps(sources))
 
 export default class NieuwsstationPlugin extends Plugin {
   async onload() {
+    // Register views
     this.registerView(VIEW_TYPE, (leaf) => new CommandCenterView(leaf));
+    this.registerView(BRIEFING_VIEW_TYPE, (leaf) => new BriefingView(leaf));
 
     // Ribbon icon
     this.addRibbonIcon("radio", "Nieuwsstation", () => {
@@ -497,15 +502,19 @@ export default class NieuwsstationPlugin extends Plugin {
     });
 
     this.addCommand({
+      id: "open-latest-briefing",
+      name: "Open laatste briefing",
+      callback: () => this.openLatestBriefing(),
+    });
+
+    this.addCommand({
       id: "generate-briefing",
       name: "Genereer briefing (alle topics)",
       callback: () => {
         this.activateView().then(() => {
-          // Trigger generate via de view
           const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE);
           if (leaves.length > 0) {
-            const view = leaves[0].view as CommandCenterView;
-            (view as any).generateBriefing();
+            (leaves[0].view as any).generateBriefing();
           }
         });
       },
@@ -526,6 +535,40 @@ export default class NieuwsstationPlugin extends Plugin {
 
     if (leaf) {
       workspace.revealLeaf(leaf);
+    }
+  }
+
+  async openBriefing(jsonPath: string) {
+    const { workspace } = this.app;
+    const leaf = workspace.getLeaf();
+    await leaf.setViewState({ type: BRIEFING_VIEW_TYPE, active: true });
+    const view = leaf.view as BriefingView;
+    await view.loadFile(jsonPath);
+  }
+
+  async openLatestBriefing() {
+    const home = process.env.HOME || "/home/marcel";
+    const dataDir = join(home, "Documents", "WorkMvMOBS", "Briefings", "data");
+
+    if (!existsSync(dataDir)) {
+      new Notice("Geen briefings gevonden. Genereer eerst een briefing.");
+      return;
+    }
+
+    try {
+      const files = readdirSync(dataDir)
+        .filter((f: string) => f.endsWith(".json"))
+        .sort()
+        .reverse();
+
+      if (files.length === 0) {
+        new Notice("Geen briefings gevonden. Genereer eerst een briefing.");
+        return;
+      }
+
+      await this.openBriefing(join(dataDir, files[0]));
+    } catch (e) {
+      new Notice(`Fout bij openen briefing: ${e}`);
     }
   }
 
