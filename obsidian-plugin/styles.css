@@ -1,0 +1,453 @@
+/* Nieuwsstation Plugin — Catppuccin Mocha Theme */
+
+.nieuwsstation-container {
+  font-family: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+  color: var(--text-normal);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Header */
+.ns-header {
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary-alt);
+}
+
+.ns-header-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.ns-header-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  background: linear-gradient(135deg, #89b4fa, #cba6f7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+
+.ns-header-text h3 {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.ns-header-text .ns-subtitle {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+.ns-status {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ns-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.ns-status-dot.ok { background: #a6e3a1; box-shadow: 0 0 6px #a6e3a166; }
+.ns-status-dot.warn { background: #f9e2af; box-shadow: 0 0 6px #f9e2af66; }
+.ns-status-dot.error { background: #f38ba8; box-shadow: 0 0 6px #f38ba866; }
+
+.ns-status-text {
+  font-size: 10px;
+  color: #a6e3a1;
+}
+
+/* Tabs */
+.ns-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.ns-tab {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.ns-tab.active {
+  color: #b4befe;
+  background: var(--background-modifier-hover);
+}
+
+.ns-tab:hover:not(.active) {
+  color: var(--text-normal);
+}
+
+/* Content */
+.ns-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.ns-panel {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Section headers */
+.ns-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 10px;
+}
+
+/* Topic toggles */
+.ns-topic-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ns-topic-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  transition: all 0.15s;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+.ns-topic-item.active {
+  background: var(--background-modifier-hover);
+}
+
+.ns-topic-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.ns-topic-info {
+  flex: 1;
+}
+
+.ns-topic-name {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.ns-topic-desc {
+  font-size: 10px;
+  color: var(--text-faint);
+  margin-top: 1px;
+}
+
+/* Toggle switch */
+.ns-toggle {
+  width: 36px;
+  height: 20px;
+  border-radius: 10px;
+  padding: 2px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.ns-toggle.off {
+  background: var(--background-modifier-border);
+  justify-content: flex-start;
+}
+
+.ns-toggle.on {
+  justify-content: flex-end;
+}
+
+.ns-toggle-knob {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+/* Focus prompt */
+.ns-textarea {
+  width: 100%;
+  min-height: 60px;
+  padding: 10px 12px;
+  background: var(--background-modifier-form-field);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  color: var(--text-normal);
+  font-size: 12px;
+  font-family: inherit;
+  resize: vertical;
+  outline: none;
+  line-height: 1.5;
+  box-sizing: border-box;
+}
+
+.ns-textarea:focus {
+  border-color: #b4befe44;
+}
+
+/* Option toggles */
+.ns-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  background: var(--background-modifier-hover);
+  border-radius: 8px;
+}
+
+.ns-option-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.ns-option-label span:first-child {
+  font-size: 14px;
+}
+
+/* Generate button */
+.ns-generate-btn {
+  width: 100%;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #89b4fa, #cba6f7);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  letter-spacing: 0.01em;
+  transition: all 0.2s;
+  box-shadow: 0 4px 16px #89b4fa33;
+}
+
+.ns-generate-btn:hover {
+  filter: brightness(1.1);
+}
+
+.ns-generate-btn.generating {
+  background: var(--background-modifier-border);
+  cursor: wait;
+  box-shadow: none;
+}
+
+.ns-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--text-muted);
+  border-top-color: #b4befe;
+  border-radius: 50%;
+  animation: ns-spin 0.8s linear infinite;
+  vertical-align: middle;
+  margin-right: 8px;
+}
+
+@keyframes ns-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Telegram hint */
+.ns-hint {
+  padding: 10px 12px;
+  background: var(--background-modifier-hover);
+  border-radius: 8px;
+  border: 1px solid var(--background-modifier-border);
+}
+
+.ns-hint-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.ns-hint-code {
+  font-size: 11px;
+  color: #f2cdcd;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  background: var(--background-secondary-alt);
+  padding: 3px 6px;
+  border-radius: 4px;
+}
+
+/* Briefing list */
+.ns-briefing-item {
+  padding: 10px 12px;
+  background: var(--background-modifier-hover);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  border-left: 3px solid #b4befe44;
+}
+
+.ns-briefing-item:hover {
+  border-left-color: #b4befe;
+}
+
+.ns-briefing-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.ns-briefing-date {
+  font-size: 10px;
+  color: var(--text-faint);
+}
+
+.ns-briefing-badges {
+  display: flex;
+  gap: 4px;
+}
+
+.ns-badge {
+  font-size: 9px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.ns-briefing-title {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* Sources list */
+.ns-source-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--background-modifier-hover);
+  border-radius: 8px;
+}
+
+.ns-source-info {
+  flex: 1;
+}
+
+.ns-source-name {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.ns-source-url {
+  font-size: 10px;
+  color: var(--text-faint);
+  font-family: monospace;
+}
+
+.ns-source-time {
+  font-size: 10px;
+  color: var(--text-faint);
+}
+
+/* Add source button */
+.ns-add-source {
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px dashed var(--background-modifier-border);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.ns-add-source:hover {
+  border-color: var(--text-muted);
+}
+
+/* Archive */
+.ns-search-input {
+  flex: 1;
+  padding: 8px 12px;
+  background: var(--background-modifier-form-field);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  color: var(--text-normal);
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+}
+
+.ns-archive-item {
+  padding: 8px 10px;
+  background: var(--background-modifier-hover);
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.15s;
+}
+
+.ns-archive-item:hover {
+  background: var(--background-modifier-active-hover);
+}
+
+.ns-archive-date {
+  font-size: 10px;
+  color: var(--text-faint);
+  min-width: 40px;
+}
+
+.ns-archive-title {
+  flex: 1;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.ns-archive-icon {
+  font-size: 10px;
+  color: var(--text-faint);
+}
+
+/* Footer */
+.ns-footer {
+  padding: 10px 16px;
+  border-top: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary-alt);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  color: var(--text-faint);
+}
+
+.ns-footer-sep {
+  margin: 0 4px;
+  color: var(--background-modifier-border);
+}

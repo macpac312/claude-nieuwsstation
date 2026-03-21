@@ -1,0 +1,9 @@
+{
+  "id": "nieuwsstation",
+  "name": "Nieuwsstation",
+  "version": "0.1.0",
+  "minAppVersion": "1.0.0",
+  "description": "Persoonlijk nieuwsstation met RSS feeds, briefings, en podcast papers via Claude Code",
+  "author": "Marcel van Marrewijk",
+  "isDesktopOnly": true
+}
