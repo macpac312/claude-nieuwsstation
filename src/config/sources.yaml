@@ -1,0 +1,132 @@
+topics:
+  regulatoir:
+    icon: "📋"
+    color: "#89b4fa"
+    feeds:
+      - name: "EBA Publications"
+        url: "https://www.eba.europa.eu/news-press/news/rss.xml"
+        type: regulation
+      - name: "ECB Supervisory Blog"
+        url: "https://www.bankingsupervision.europa.eu/rss/press.html"
+        type: regulation
+      - name: "DNB Nieuwsberichten"
+        url: "https://www.dnb.nl/en/rss/16451/6882"
+        type: regulation
+      - name: "BIS Press Releases"
+        url: "https://www.bis.org/doclist/all_pressrels.rss"
+        type: regulation
+    keywords:
+      - IRB
+      - CRR
+      - LGD
+      - PD
+      - EGIM
+      - AVM
+      - credit risk
+      - model validation
+      - Basel
+
+  huizenmarkt:
+    icon: "🏠"
+    color: "#a6e3a1"
+    feeds:
+      - name: "CBS Nieuwsberichten"
+        url: "https://feeds.cbs.nl/nieuws"
+        type: data
+      - name: "NVM Woningmarkt"
+        url: "https://www.nvm.nl/rss"
+        type: article
+      - name: "Calcasa Nieuws"
+        url: "https://www.calcasa.nl/feed"
+        type: article
+    keywords:
+      - huizenprijzen
+      - woningmarkt
+      - hypotheek
+      - koopwoningen
+      - WOZ
+      - taxatie
+
+  financieel:
+    icon: "📊"
+    color: "#fab387"
+    feeds:
+      - name: "FD Headlines"
+        url: "https://fd.nl/rss"
+        type: article
+      - name: "NRC Economie"
+        url: "https://www.nrc.nl/sectie/economie/rss/"
+        type: article
+    keywords:
+      - rente
+      - ECB
+      - Rabobank
+      - banken
+      - kapitaal
+
+  tech:
+    icon: "⚡"
+    color: "#cba6f7"
+    feeds:
+      - name: "The Verge AI"
+        url: "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml"
+        type: article
+      - name: "Anthropic Blog"
+        url: "https://www.anthropic.com/rss"
+        type: article
+      - name: "Hacker News Best"
+        url: "https://hnrss.org/best"
+        type: article
+    keywords:
+      - Claude
+      - LLM
+      - AI
+      - machine learning
+      - GPT
+      - Gemini
+
+  sport:
+    icon: "⚽"
+    color: "#a6e3a1"
+    feeds:
+      - name: "NOS Sport"
+        url: "https://feeds.nos.nl/nossport"
+        type: article
+      - name: "Motorsport F1"
+        url: "https://www.motorsport.com/rss/f1/news/"
+        type: article
+      - name: "Chess.com News"
+        url: "https://www.chess.com/rss/news"
+        type: article
+    keywords:
+      - F1
+      - Verstappen
+      - Eredivisie
+      - schaken
+      - chess
+
+  ai_nieuws:
+    icon: "🤖"
+    color: "#cba6f7"
+    feeds:
+      - name: "Anthropic Blog"
+        url: "https://www.anthropic.com/rss"
+        type: article
+      - name: "OpenAI Blog"
+        url: "https://openai.com/blog/rss.xml"
+        type: article
+      - name: "Hugging Face Blog"
+        url: "https://huggingface.co/blog/feed.xml"
+        type: article
+      - name: "arXiv AI (cs.AI)"
+        url: "https://rss.arxiv.org/rss/cs.AI"
+        type: paper
+    keywords:
+      - LLM
+      - transformer
+      - RLHF
+      - agents
+      - MCP
+      - Claude
+      - GPT
+      - open source
