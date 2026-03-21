@@ -406,9 +406,14 @@ print(json.dumps(sources))
       // Find claude binary
       const claudePath = await this.findClaudeBinary();
 
+      const home = process.env.HOME || "/home/marcel";
       const proc = spawn(claudePath, ["-p", `Genereer een briefing voor de volgende topics: ${topicArgs}.${this.customPrompt ? ` Focus: ${this.customPrompt}` : ""} Volg het /briefing command in ~/.claude/commands/briefing.md.`], {
-        cwd: `${process.env.HOME}/nieuwsstation`,
-        env: { ...process.env },
+        cwd: `${home}/nieuwsstation`,
+        env: {
+          ...process.env,
+          PATH: `${home}/.local/bin:/usr/local/bin:/usr/bin:/bin:${process.env.PATH || ""}`,
+          HOME: home,
+        },
       });
 
       let output = "";
@@ -439,27 +444,31 @@ print(json.dumps(sources))
   }
 
   private findClaudeBinary(): Promise<string> {
+    const fs = require("fs");
+    // Bekende locaties voor claude binary
+    const candidates = [
+      `${process.env.HOME}/.local/bin/claude`,
+      `${process.env.HOME}/.claude/local/claude`,
+      "/usr/local/bin/claude",
+      "/usr/bin/claude",
+    ];
+
+    for (const candidate of candidates) {
+      try {
+        fs.accessSync(candidate, fs.constants.X_OK);
+        return Promise.resolve(candidate);
+      } catch { /* try next */ }
+    }
+
+    // Fallback: probeer via shell
     return new Promise((resolve, reject) => {
-      const proc = spawn("which", ["claude"]);
+      const proc = spawn("/bin/bash", ["-l", "-c", "which claude"]);
       let path = "";
       proc.stdout?.on("data", (d: Buffer) => path += d.toString().trim());
       proc.on("close", (code: number | null) => {
         if (code === 0 && path) {
           resolve(path);
         } else {
-          // Fallback paden
-          const fallbacks = [
-            `${process.env.HOME}/.claude/local/claude`,
-            "/usr/local/bin/claude",
-            "/usr/bin/claude",
-          ];
-          for (const fb of fallbacks) {
-            try {
-              require("fs").accessSync(fb, require("fs").constants.X_OK);
-              resolve(fb);
-              return;
-            } catch { /* try next */ }
-          }
           reject("Claude binary niet gevonden. Installeer Claude Code of stel het pad in.");
         }
       });
