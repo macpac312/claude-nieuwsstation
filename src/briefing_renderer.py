@@ -81,14 +81,19 @@ def article(a, tc, tid, idx):
 
     from urllib.parse import quote
 
+    is_translated = a.get("translated", False)
+    title_orig = _esc(a.get("title_original", "")) if is_translated else ""
+    summ_orig = _esc(a.get("summary_original", "")) if is_translated else ""
+
     # Bewaar: obsidian URI om nieuwe note aan te maken in Clippings map
     save_title = title.replace('"', '').replace("'", "").replace("&amp;", "&")
     save_content = f"---\ndate: {datetime.now(timezone.utc).strftime('%Y-%m-%d')}\nsource: {src}\nurl: {link}\ntype: clipping\n---\n\n# {save_title}\n\nBron: [{src}]({link})\n\n{summ}"
     save_url = f"obsidian://new?vault=WorkMvMOBS&name=Clippings/{quote(save_title, safe='')}&content={quote(save_content, safe='')}"
 
-    # Vertaal: obsidian URI die een Claude prompt opent om dit artikel te vertalen
-    translate_prompt = f"Vertaal het volgende nieuwsartikel naar het Nederlands. Behoud de structuur.\n\nTitel: {save_title}\n\nInhoud: {summ}\n\nBron: {link}"
-    translate_url = f"obsidian://new?vault=WorkMvMOBS&name=Vertalingen/{quote(save_title, safe='')}&content={quote(translate_prompt, safe='')}"
+    # Vertaal badge
+    translate_badge = ""
+    if is_translated:
+        translate_badge = f'<span style="font-size:9px;padding:2px 6px;border-radius:3px;background:{C["gr"]}18;color:{C["gr"]};border:1px solid {C["gr"]}22;" title="Automatisch vertaald uit het Engels">🌐 NL</span>'
 
     # ─── INGEKLAPT ───
     collapsed = f'''<div style="flex:1;">
@@ -98,9 +103,9 @@ def article(a, tc, tid, idx):
 <span style="font-size:10px;padding:2px 8px;border-radius:4px;background:{bc}22;color:{bc};font-weight:600;">{bl}</span>
 <span style="font-size:11px;color:{C["o1"]};">{src}</span>
 {f'<span style="font-size:10px;color:{C["s2"]};">{ago}</span>' if ago else ''}
+{translate_badge}
 <span style="flex:1;"></span>
 <a href="{save_url}" style="font-size:10px;padding:3px 8px;border-radius:4px;background:{C["tl"]}15;color:{C["tl"]};text-decoration:none;border:1px solid {C["tl"]}22;" title="Bewaar als note in Obsidian vault">💾 Bewaar</a>
-<a href="{translate_url}" target="_blank" style="font-size:10px;padding:3px 8px;border-radius:4px;background:{C["sap"]}15;color:{C["sap"]};text-decoration:none;border:1px solid {C["sap"]}22;" title="Vertaal naar Nederlands via Google Translate">🌐 Vertaal NL</a>
 </div>
 </div>
 <div style="width:24px;height:24px;border-radius:6px;background:{tc}18;color:{tc};display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;margin-top:2px;">▾</div>'''
@@ -122,9 +127,21 @@ def article(a, tc, tid, idx):
 <span style="color:{C["o0"]};">↗</span>
 </a>'''
 
-    # Uitgebreide samenvatting
+    # Uitgebreide samenvatting (met origineel als vertaald)
+    orig_block = ""
+    if is_translated and summ_orig:
+        orig_block = f'''
+<details style="margin-top:8px;">
+<summary style="font-size:10px;color:{C["o0"]};cursor:pointer;list-style:none;">📄 Toon origineel (Engels)</summary>
+<div style="font-size:12px;color:{C["o1"]};line-height:1.6;padding:10px 14px;margin-top:6px;background:{C["s0"]}44;border-radius:8px;border-left:2px solid {C["o0"]};">
+<div style="font-size:11px;font-weight:600;color:{C["o0"]};margin-bottom:4px;">{title_orig}</div>
+{summ_orig}
+</div>
+</details>'''
+
     ext_summ = f'''<div style="font-size:13px;color:{C["st1"]};line-height:1.8;padding:14px 16px;background:{C["mantle"]};border-radius:10px;border:1px solid {C["s0"]};">
 {summ}
+{orig_block}
 </div>'''
 
     # Diepe analyse
