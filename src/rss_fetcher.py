@@ -85,6 +85,23 @@ def parse_feed(feed_url: str, source_name: str, source_type: str,
             if not any(kw.lower() in text for kw in keywords):
                 continue
 
+        # Probeer afbeelding URL te extraheren
+        image_url = ""
+        if hasattr(entry, "media_content") and entry.media_content:
+            image_url = entry.media_content[0].get("url", "")
+        elif hasattr(entry, "media_thumbnail") and entry.media_thumbnail:
+            image_url = entry.media_thumbnail[0].get("url", "")
+        elif hasattr(entry, "enclosures") and entry.enclosures:
+            for enc in entry.enclosures:
+                if enc.get("type", "").startswith("image/"):
+                    image_url = enc.get("href", enc.get("url", ""))
+                    break
+        if not image_url:
+            # Zoek in de summary naar img tags
+            img_match = re.search(r'<img[^>]+src=["\']([^"\']+)', summary)
+            if img_match:
+                image_url = img_match.group(1)
+
         items.append({
             "title": title,
             "link": link,
@@ -94,6 +111,7 @@ def parse_feed(feed_url: str, source_name: str, source_type: str,
             "source_type": source_type,
             "topic": topic,
             "feed_url": feed_url,
+            "image_url": image_url,
         })
 
     return items
