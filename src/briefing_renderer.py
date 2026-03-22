@@ -192,39 +192,83 @@ def article(a, tc, tid, idx):
 </details>'''
 
 
-def render_briefing(rss_data, vault_data=None, focus=None):
-    now = datetime.now(timezone.utc)
-    ds = now.strftime("%Y-%m-%d")
-    mnl = ["januari","februari","maart","april","mei","juni","juli","augustus","september","oktober","november","december"]
-    dnl = f"{now.day} {mnl[now.month-1]} {now.year}"
-    tot = rss_data.get("total_items", 0)
+def _tab_bar(twi, active_tid, ds):
+    """Render de tab-balk bovenaan elke topic pagina. Links openen de andere topic files."""
+    tabs = ""
+    for tid, _ in twi:
+        m = TOPIC.get(tid, {"icon": "📰", "c": C["s2"], "label": tid})
+        is_active = tid == active_tid
+        if is_active:
+            s = f"color:{C['t']};background:{C['base']};border-top:2px solid {C['s2']};font-weight:600;"
+        else:
+            s = f"color:{C['o0']};"
+        link = f"[[Briefings/{ds}/{m['label']}|{m['icon']} {m['label']}]]"
+        if is_active:
+            # Actieve tab als niet-klikbare span
+            tabs += f'<span style="padding:6px 14px;font-size:12px;{s}border-radius:6px 6px 0 0;display:inline-flex;align-items:center;gap:4px;">{m["icon"]} {m["label"]}</span>'
+        else:
+            tabs += f'<span style="padding:6px 14px;font-size:12px;{s}border-radius:6px 6px 0 0;display:inline-flex;align-items:center;gap:4px;cursor:pointer;">{link}</span>'
+    return f'''<div style="display:flex;background:{C["crust"]};border-bottom:1px solid {C["s0"]};padding:0 8px;overflow-x:auto;border-radius:8px 8px 0 0;margin-bottom:16px;">
+{tabs}
+</div>'''
 
-    twi = [(tid, td) for tid, td in rss_data.get("topics", {}).items() if td.get("items")]
+
+def render_topic_page(tid, td, twi, ds, dnl, tot, vault_data=None):
+    """Render een aparte pagina voor één topic."""
+    items = td.get("items", [])
+    m = TOPIC.get(tid, {"icon": "📰", "c": C["s2"], "label": tid})
+
+    md = f"""---
+date: {ds}
+type: briefing-topic
+topic: {tid}
+bronnen: {len(items)}
+cssclasses:
+  - nieuwsstation
+  - ns-briefing
+---
+
+{_tab_bar(twi, tid, ds)}
+
+# {m["icon"]} {m["label"]} — {dnl}
+
+<div style="font-size:12px;color:{C["o0"]};margin:4px 0 16px;">{len(items)} artikelen · {tot} bronnen totaal</div>
+
+"""
+
+    for idx, item in enumerate(items[:10]):
+        md += article(item, m["c"], tid, idx)
+
+    # Vault notes (alleen relevante)
+    if vault_data and vault_data.get("notes"):
+        md += f'\n---\n\n## Gerelateerde vault notes\n\n<div style="display:flex;flex-wrap:wrap;gap:6px;margin:12px 0;">\n'
+        for n in vault_data["notes"][:6]:
+            md += f'<span style="font-size:11px;padding:3px 8px;border-radius:4px;background:{C["s2"]}12;color:{C["st0"]};border:1px solid {C["s2"]}22;display:inline-block;">[[{n["title"]}]]</span>\n'
+        md += '</div>\n\n'
+
+    return md
+
+
+def render_index_page(twi, ds, dnl, tot, vault_data=None):
+    """Render de hoofdpagina met overzicht en links naar topic tabs."""
     tids = [t[0] for t in twi]
 
-    # Frontmatter
     md = f"""---
 date: {ds}
 type: briefing
 topics: [{", ".join(tids)}]
 podcast: true
 bronnen: {tot}
-generated: {now.isoformat()}
 cssclasses:
   - nieuwsstation
   - ns-briefing
 ---
 
+{_tab_bar(twi, "", ds)}
+
 # 📡 Ochtend Briefing — {dnl}
 
-<div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0;">
-"""
-    for tid in tids:
-        m = TOPIC.get(tid, {"icon":"📰","c":C["s2"],"label":tid})
-        md += f'<span style="font-size:11px;padding:3px 10px;border-radius:6px;background:{C["s1"]}33;color:{C["st0"]};font-weight:500;">{m["icon"]} {m["label"]}</span>\n'
-
-    md += f'''</div>
-<div style="font-size:12px;color:{C["o0"]};margin-top:4px;">{tot} bronnen · {now.strftime("%H:%M")} CET</div>
+<div style="font-size:12px;color:{C["o0"]};margin:4px 0 16px;">{tot} bronnen · {len(twi)} topics</div>
 
 > [!podcast] 🎙️ Podcast
 > ![[Briefings/podcast/audio/{ds}.mp3]]
@@ -232,37 +276,27 @@ cssclasses:
 
 ---
 
-'''
+"""
 
-    # Tab bar — accent voor active tab, subtiel voor rest
-    tabs = ""
-    for i, (tid, _) in enumerate(twi):
-        m = TOPIC.get(tid, {"icon":"📰","c":C["s2"],"label":tid})
-        active = i == 0
-        s = f"color:{C['t']};background:{C['base']};border-top:2px solid {C['s2']};font-weight:500;" if active else f"color:{C['o0']};"
-        tabs += f'<a href="#{tid}" style="padding:6px 14px;font-size:12px;{s}text-decoration:none;border-radius:6px 6px 0 0;display:inline-flex;align-items:center;gap:4px;">{m["icon"]} {m["label"]}</a>'
-
-    md += f'''<div style="display:flex;background:{C["crust"]};border-bottom:1px solid {C["s0"]};padding:0 8px;overflow-x:auto;border-radius:8px 8px 0 0;margin-bottom:20px;">
-{tabs}
-</div>
-
-'''
-
-    # Per topic
+    # Topic overzicht met links
     for tid, td in twi:
-        items = td.get("items", [])
-        m = TOPIC.get(tid, {"icon":"📰","c":C["t"],"label":tid})
+        m = TOPIC.get(tid, {"icon": "📰", "c": C["s2"], "label": tid})
+        count = len(td.get("items", []))
+        first_titles = [_esc(it.get("title", ""))[:60] for it in td.get("items", [])[:3]]
 
-        md += f'<div id="{tid}">\n\n'
-        md += f'## {m["icon"]} {m["label"]}\n\n'
+        md += f'''<div style="padding:14px 16px;border-radius:12px;border:1px solid {C["s0"]};margin-bottom:10px;border-left:3px solid {C["s2"]};">
 
-        for idx, item in enumerate(items[:8]):
-            md += article(item, m["c"], tid, idx)
+### [[Briefings/{ds}/{m["label"]}|{m["icon"]} {m["label"]}]] — {count} artikelen
 
-        md += '\n</div>\n\n---\n\n'
+'''
+        for t in first_titles:
+            md += f'- {t}\n'
+        md += '\n</div>\n\n'
 
     # Kruisverband
-    md += f'''## 🔗 Kruisverband-analyse
+    md += f'''---
+
+## 🔗 Kruisverband-analyse
 
 <div style="background:{C["mantle"]};border-radius:12px;padding:20px 24px;font-size:13px;color:{C["st1"]};line-height:1.7;border:1px solid {C["s0"]}44;border-left:3px solid {C["s2"]}44;">
 
@@ -284,11 +318,40 @@ cssclasses:
     srcs = set()
     for _, td in twi:
         for it in td.get("items", []):
-            srcs.add((it.get("source_name",""), _dom(it.get("link","")), it.get("source_type","")))
+            srcs.add((it.get("source_name", ""), _dom(it.get("link", "")), it.get("source_type", "")))
     for i, (n, d, st) in enumerate(sorted(srcs), 1):
         md += f'{i}. **{n}** — `{d}` ({TLABEL.get(st, st)})\n'
 
     return md
+
+
+def render_briefing(rss_data, vault_data=None, focus=None):
+    """Genereer aparte bestanden per topic + index pagina.
+
+    Returns: dict met {filename: markdown_content}
+    """
+    now = datetime.now(timezone.utc)
+    ds = now.strftime("%Y-%m-%d")
+    mnl = ["januari", "februari", "maart", "april", "mei", "juni",
+           "juli", "augustus", "september", "oktober", "november", "december"]
+    dnl = f"{now.day} {mnl[now.month - 1]} {now.year}"
+    tot = rss_data.get("total_items", 0)
+
+    twi = [(tid, td) for tid, td in rss_data.get("topics", {}).items() if td.get("items")]
+
+    pages = {}
+
+    # Index pagina
+    pages[f"Briefings/{ds}/{ds}.md"] = render_index_page(twi, ds, dnl, tot, vault_data)
+
+    # Per topic een aparte pagina
+    for tid, td in twi:
+        m = TOPIC.get(tid, {"icon": "📰", "c": C["s2"], "label": tid})
+        pages[f"Briefings/{ds}/{m['label']}.md"] = render_topic_page(
+            tid, td, twi, ds, dnl, tot, vault_data
+        )
+
+    return pages
 
 
 def main():
@@ -296,18 +359,21 @@ def main():
     p.add_argument("--rss", required=True)
     p.add_argument("--vault")
     p.add_argument("--focus")
-    p.add_argument("--output")
+    p.add_argument("--output", help="Base output directory (default: vault Briefings/)")
     a = p.parse_args()
 
     rss = json.loads(Path(a.rss).read_text())
     vault = json.loads(Path(a.vault).read_text()) if a.vault else None
-    md = render_briefing(rss, vault, a.focus)
+    pages = render_briefing(rss, vault, a.focus)
 
-    ds = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    out = Path(a.output) if a.output else BRIEFINGS_PATH / f"{ds}.md"
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(md)
-    print(f"[OK] Briefing: {out}", file=sys.stderr)
+    base = Path(a.output) if a.output else VAULT_PATH
+    for rel_path, content in pages.items():
+        out = base / rel_path
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(content)
+        print(f"[OK] {rel_path}", file=sys.stderr)
+
+    print(f"\n[OK] {len(pages)} bestanden gegenereerd", file=sys.stderr)
 
 
 if __name__ == "__main__":
