@@ -18,27 +18,32 @@ from urllib.parse import urlparse
 VAULT_PATH = Path.home() / "Documents" / "WorkMvMOBS"
 BRIEFINGS_PATH = VAULT_PATH / "Briefings"
 
+# Nightstation theme kleuren — accent #7c5cbf, text-accent #cba6f7
 C = {
     "base": "#1e1e2e", "mantle": "#181825", "crust": "#11111b",
     "s0": "#313244", "s1": "#45475a", "s2": "#585b70",
     "o0": "#6c7086", "o1": "#7f849c",
     "t": "#cdd6f4", "st0": "#a6adc8", "st1": "#bac2de",
-    "lav": "#b4befe", "bl": "#89b4fa", "sap": "#74c7ec",
-    "tl": "#94e2d5", "gr": "#a6e3a1", "yl": "#f9e2af",
-    "pe": "#fab387", "rd": "#f38ba8", "mv": "#cba6f7",
+    "acc": "#7c5cbf",     # Nightstation accent
+    "acl": "#cba6f7",     # Nightstation text-accent (licht)
+    "ach": "#8e6fd4",     # Accent hover
+    "gr": "#a6e3a1", "yl": "#f9e2af",
+    "pe": "#fab387", "rd": "#f38ba8",
+    "tl": "#94e2d5",
 }
 
+# Topic kleuren: subtiel, niet voor tekst maar voor borders/badges
 TOPIC = {
-    "regulatoir": {"icon": "📋", "c": C["bl"], "label": "Regulatoir"},
+    "regulatoir": {"icon": "📋", "c": C["acc"], "label": "Regulatoir"},
     "huizenmarkt": {"icon": "🏠", "c": C["gr"], "label": "Huizenmarkt"},
     "financieel": {"icon": "📊", "c": C["pe"], "label": "Financieel"},
-    "tech":        {"icon": "⚡", "c": C["mv"], "label": "Tech & AI"},
+    "tech":        {"icon": "⚡", "c": C["acl"], "label": "Tech & AI"},
     "sport":       {"icon": "⚽", "c": C["gr"], "label": "Sport"},
-    "ai_nieuws":   {"icon": "🤖", "c": C["mv"], "label": "AI Nieuws"},
+    "ai_nieuws":   {"icon": "🤖", "c": C["acl"], "label": "AI Nieuws"},
 }
 
 TLABEL = {"article": "Artikel", "paper": "Paper", "data": "Dataset", "regulation": "Regulering", "news_api": "Nieuws"}
-TCOLOR = {"article": C["sap"], "paper": C["mv"], "data": C["gr"], "regulation": C["bl"], "news_api": C["pe"]}
+TCOLOR = {"article": C["st0"], "paper": C["acl"], "data": C["gr"], "regulation": C["acc"], "news_api": C["pe"]}
 
 
 def _dom(url):
@@ -70,7 +75,7 @@ def article(a, tc, tid, idx):
     pub = a.get("published", "")
     dom = _dom(link)
     ago = _ago(pub) if pub else ""
-    bc = TCOLOR.get(st, C["sap"])
+    bc = TCOLOR.get(st, C["st0"])
     bl = TLABEL.get(st, "Artikel")
 
     # Korte samenvatting voor callout (max 2 zinnen)
@@ -93,35 +98,35 @@ def article(a, tc, tid, idx):
     # Vertaal badge
     translate_badge = ""
     if is_translated:
-        translate_badge = f'<span style="font-size:9px;padding:2px 6px;border-radius:3px;background:{C["gr"]}18;color:{C["gr"]};border:1px solid {C["gr"]}22;" title="Automatisch vertaald uit het Engels">🌐 NL</span>'
+        translate_badge = f'<span style="font-size:9px;padding:2px 6px;border-radius:3px;background:{C["acc"]}18;color:{C["st0"]};border:1px solid {C["acc"]}22;" title="Automatisch vertaald uit het Engels">🌐 NL</span>'
 
     # ─── INGEKLAPT ───
     collapsed = f'''<div style="flex:1;">
 <div style="font-size:15px;font-weight:600;color:{C["t"]};line-height:1.4;margin-bottom:6px;">{title}</div>
 <div style="font-size:13px;color:{C["st0"]};line-height:1.6;">{summ[:180]}{"..." if len(summ)>180 else ""}</div>
 <div style="display:flex;align-items:center;gap:6px;margin-top:8px;">
-<span style="font-size:10px;padding:2px 8px;border-radius:4px;background:{bc}22;color:{bc};font-weight:600;">{bl}</span>
+<span style="font-size:10px;padding:2px 8px;border-radius:4px;background:{C["s1"]}44;color:{C["st0"]};font-weight:600;">{bl}</span>
 <span style="font-size:11px;color:{C["o1"]};">{src}</span>
 {f'<span style="font-size:10px;color:{C["s2"]};">{ago}</span>' if ago else ''}
 {translate_badge}
 <span style="flex:1;"></span>
-<a href="{save_url}" style="font-size:10px;padding:3px 8px;border-radius:4px;background:{C["tl"]}15;color:{C["tl"]};text-decoration:none;border:1px solid {C["tl"]}22;" title="Bewaar als note in Obsidian vault">💾 Bewaar</a>
+<a href="{save_url}" style="font-size:10px;padding:3px 8px;border-radius:4px;background:{C["acc"]}15;color:{C["st0"]};text-decoration:none;border:1px solid {C["acc"]}25;" title="Bewaar als note in Obsidian vault">💾 Bewaar</a>
 </div>
 </div>
-<div style="width:24px;height:24px;border-radius:6px;background:{tc}18;color:{tc};display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;margin-top:2px;">▾</div>'''
+<div style="width:24px;height:24px;border-radius:6px;background:{C["s1"]}44;color:{C["o0"]};display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;margin-top:2px;">▾</div>'''
 
     # Impact callout (alleen zichtbaar als ingeklapt — verborgen bij open via CSS)
     callout = f'''<div class="ns-callout-collapsed" style="padding:0 16px 14px;">
-<div style="border-left:3px solid {tc};background:{tc}0a;padding:10px 14px;border-radius:0 8px 8px 0;">
-<div style="font-size:12px;font-weight:600;color:{tc};margin-bottom:4px;">🔍 Impact analyse</div>
+<div style="border-left:3px solid {C["acc"]};background:{C["acc"]}08;padding:10px 14px;border-radius:0 8px 8px 0;">
+<div style="font-size:12px;font-weight:600;color:{C["st0"]};margin-bottom:4px;">🔍 Impact analyse</div>
 <div style="font-size:12px;color:{C["st1"]};line-height:1.6;">{short_callout}</div>
 </div>
 </div>'''
 
     # ─── UITGEKLAPT ───
-    # Bronnen pill
+    # Bronnen pill — neutrale kleuren, accent alleen op badge border
     src_pill = f'''<a href="{link}" target="_blank" style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;background:{C["s0"]}66;border:1px solid {C["s0"]};text-decoration:none;">
-<span style="font-size:10px;padding:1px 6px;border-radius:3px;background:{bc}22;color:{bc};font-weight:600;border:1px solid {bc}33;">{bl}</span>
+<span style="font-size:10px;padding:1px 6px;border-radius:3px;background:{C["s1"]}44;color:{C["st0"]};font-weight:600;border:1px solid {C["s1"]};">{bl}</span>
 <span style="font-size:12px;color:{C["t"]};font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{src}: {title[:55]}{"..." if len(title)>55 else ""}</span>
 <span style="font-size:10px;color:{C["o0"]};font-family:monospace;">{dom}</span>
 <span style="color:{C["o0"]};">↗</span>
@@ -133,7 +138,7 @@ def article(a, tc, tid, idx):
         orig_block = f'''
 <details style="margin-top:8px;">
 <summary style="font-size:10px;color:{C["o0"]};cursor:pointer;list-style:none;">📄 Toon origineel (Engels)</summary>
-<div style="font-size:12px;color:{C["o1"]};line-height:1.6;padding:10px 14px;margin-top:6px;background:{C["s0"]}44;border-radius:8px;border-left:2px solid {C["o0"]};">
+<div style="font-size:12px;color:{C["o1"]};line-height:1.6;padding:10px 14px;margin-top:6px;background:{C["s0"]}44;border-radius:8px;border-left:2px solid {C["s1"]};">
 <div style="font-size:11px;font-weight:600;color:{C["o0"]};margin-bottom:4px;">{title_orig}</div>
 {summ_orig}
 </div>
@@ -144,19 +149,20 @@ def article(a, tc, tid, idx):
 {orig_block}
 </div>'''
 
-    # Diepe analyse
-    deep = f'''<div style="border-left:3px solid {tc};background:{tc}0a;padding:14px 16px;border-radius:0 10px 10px 0;">
+    # Diepe analyse — accent border
+    deep = f'''<div style="border-left:3px solid {C["acc"]};background:{C["acc"]}08;padding:14px 16px;border-radius:0 10px 10px 0;">
 <div style="font-size:13px;color:{C["st1"]};line-height:1.8;">
 <em style="color:{C["o0"]};">Diepe impact analyse wordt gegenereerd bij gebruik van /briefing — Claude analyseert dan de relevantie voor Rabobank model validatie.</em>
 </div>
 </div>'''
 
-    # Actieknoppen
+    # Actieknoppen — neutrale kleuren, accent als hover-hint
+    btn_s = f"padding:7px 14px;border-radius:8px;font-size:12px;font-weight:500;display:inline-flex;align-items:center;gap:6px;"
     btns = f'''<div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:4px;">
-<a href="{link}" target="_blank" style="padding:7px 14px;border-radius:8px;background:{C["tl"]}12;border:1px solid {C["tl"]}22;color:{C["tl"]};font-size:12px;font-weight:500;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">💾 Opslaan als note in vault</a>
-<span style="padding:7px 14px;border-radius:8px;background:{C["mv"]}12;border:1px solid {C["mv"]}22;color:{C["mv"]};font-size:12px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">🔍 Diepere analyse genereren</span>
-<span style="padding:7px 14px;border-radius:8px;background:{C["pe"]}12;border:1px solid {C["pe"]}22;color:{C["pe"]};font-size:12px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">🎙️ Podcast paper maken</span>
-<span style="padding:7px 14px;border-radius:8px;background:{C["o1"]}12;border:1px solid {C["o1"]}22;color:{C["o1"]};font-size:11px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">📋 Kopieer samenvatting</span>
+<a href="{save_url}" style="{btn_s}background:{C["acc"]}12;border:1px solid {C["acc"]}25;color:{C["st0"]};text-decoration:none;">💾 Opslaan als note in vault</a>
+<span style="{btn_s}background:{C["s1"]}22;border:1px solid {C["s1"]};color:{C["st0"]};cursor:pointer;">🔍 Diepere analyse genereren</span>
+<span style="{btn_s}background:{C["s1"]}22;border:1px solid {C["s1"]};color:{C["st0"]};cursor:pointer;">🎙️ Podcast paper maken</span>
+<span style="{btn_s}background:{C["s1"]}22;border:1px solid {C["s1"]};color:{C["o1"]};cursor:pointer;font-size:11px;">📋 Kopieer samenvatting</span>
 </div>'''
 
     return f'''
@@ -218,8 +224,8 @@ cssclasses:
 <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0;">
 """
     for tid in tids:
-        m = TOPIC.get(tid, {"icon":"📰","c":C["t"],"label":tid})
-        md += f'<span style="font-size:11px;padding:3px 10px;border-radius:6px;background:{m["c"]}18;color:{m["c"]};font-weight:500;">{m["icon"]} {m["label"]}</span>\n'
+        m = TOPIC.get(tid, {"icon":"📰","c":C["acc"],"label":tid})
+        md += f'<span style="font-size:11px;padding:3px 10px;border-radius:6px;background:{C["s1"]}33;color:{C["st0"]};font-weight:500;">{m["icon"]} {m["label"]}</span>\n'
 
     md += f'''</div>
 <div style="font-size:12px;color:{C["o0"]};margin-top:4px;">{tot} bronnen · {now.strftime("%H:%M")} CET</div>
@@ -232,12 +238,12 @@ cssclasses:
 
 '''
 
-    # Tab bar
+    # Tab bar — accent voor active tab, subtiel voor rest
     tabs = ""
     for i, (tid, _) in enumerate(twi):
-        m = TOPIC.get(tid, {"icon":"📰","c":C["o0"],"label":tid})
+        m = TOPIC.get(tid, {"icon":"📰","c":C["acc"],"label":tid})
         active = i == 0
-        s = f"color:{m['c']};background:{C['base']};border-top:2px solid {m['c']};font-weight:500;" if active else f"color:{C['o0']};"
+        s = f"color:{C['t']};background:{C['base']};border-top:2px solid {C['acc']};font-weight:500;" if active else f"color:{C['o0']};"
         tabs += f'<a href="#{tid}" style="padding:6px 14px;font-size:12px;{s}text-decoration:none;border-radius:6px 6px 0 0;display:inline-flex;align-items:center;gap:4px;">{m["icon"]} {m["label"]}</a>'
 
     md += f'''<div style="display:flex;background:{C["crust"]};border-bottom:1px solid {C["s0"]};padding:0 8px;overflow-x:auto;border-radius:8px 8px 0 0;margin-bottom:20px;">
@@ -252,7 +258,7 @@ cssclasses:
         m = TOPIC.get(tid, {"icon":"📰","c":C["t"],"label":tid})
 
         md += f'<div id="{tid}">\n\n'
-        md += f'## <span style="color:{m["c"]}">{m["icon"]} {m["label"]}</span>\n\n'
+        md += f'## {m["icon"]} {m["label"]}\n\n'
 
         for idx, item in enumerate(items[:8]):
             md += article(item, m["c"], tid, idx)
@@ -260,9 +266,9 @@ cssclasses:
         md += '\n</div>\n\n---\n\n'
 
     # Kruisverband
-    md += f'''## <span style="color:{C["lav"]}">🔗 Kruisverband-analyse</span>
+    md += f'''## 🔗 Kruisverband-analyse
 
-<div style="background:{C["mantle"]};border-radius:12px;padding:20px 24px;font-size:13px;color:{C["st1"]};line-height:1.7;border:1px solid {C["s0"]}44;border-left:3px solid {C["lav"]}44;">
+<div style="background:{C["mantle"]};border-radius:12px;padding:20px 24px;font-size:13px;color:{C["st1"]};line-height:1.7;border:1px solid {C["s0"]}44;border-left:3px solid {C["acc"]}44;">
 
 *Kruisverband-analyse wordt gegenereerd bij gebruik van /briefing — Claude legt dan verbanden tussen topics.*
 
@@ -274,7 +280,7 @@ cssclasses:
     if vault_data and vault_data.get("notes"):
         md += '## Gerelateerde vault notes\n\n<div style="display:flex;flex-wrap:wrap;gap:6px;margin:12px 0;">\n'
         for n in vault_data["notes"][:8]:
-            md += f'<span style="font-size:11px;padding:3px 8px;border-radius:4px;background:{C["lav"]}12;color:{C["lav"]};display:inline-block;">[[{n["title"]}]]</span>\n'
+            md += f'<span style="font-size:11px;padding:3px 8px;border-radius:4px;background:{C["acc"]}12;color:{C["st0"]};border:1px solid {C["acc"]}22;display:inline-block;">[[{n["title"]}]]</span>\n'
         md += '</div>\n\n'
 
     # Bronnen
