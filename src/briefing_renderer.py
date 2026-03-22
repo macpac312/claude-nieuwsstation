@@ -62,27 +62,20 @@ def _esc(s):
 
 
 def article(a, tc, tid, idx, hero=False):
-    """Render één artikel — met optionele hero image of thumbnail."""
+    """Render één artikel conform mockup:
+    Ingeklapt: kop + 2 regels samenvatting + impact callout card
+    Uitgeklapt: bronnen pills + uitgebreide samenvatting + impact analyse + actiepunten + vault notes + knoppen
+    """
     title = _esc(a.get("title", ""))
     summ = _esc(a.get("summary", ""))
     link = a.get("link", "")
     src = _esc(a.get("source_name", ""))
     st = a.get("source_type", "article")
-    pub = a.get("published", "")
     img = a.get("image_url", "")
     dom = _dom(link)
-    ago = _ago(pub) if pub else ""
-    bc = TCOLOR.get(st, C["st0"])
     bl = TLABEL.get(st, "Artikel")
 
-    # Korte samenvatting voor callout (max 2 zinnen)
-    sentences = summ.split(". ")
-    short_callout = ". ".join(sentences[:2])
-    if len(sentences) > 2:
-        short_callout += "."
-
     from urllib.parse import quote
-
     is_translated = a.get("translated", False)
     title_orig = _esc(a.get("title_original", "")) if is_translated else ""
     summ_orig = _esc(a.get("summary_original", "")) if is_translated else ""
@@ -91,150 +84,74 @@ def article(a, tc, tid, idx, hero=False):
     save_content = f"---\ndate: {datetime.now(timezone.utc).strftime('%Y-%m-%d')}\nsource: {src}\nurl: {link}\ntype: clipping\n---\n\n# {save_title}\n\nBron: [{src}]({link})\n\n{summ}"
     save_url = f"obsidian://new?vault=WorkMvMOBS&name=Clippings/{quote(save_title, safe='')}&content={quote(save_content, safe='')}"
 
-    translate_badge = ""
-    if is_translated:
-        translate_badge = f'<span style="font-size:9px;padding:2px 6px;border-radius:3px;background:{C["s2"]}18;color:{C["st0"]};border:1px solid {C["s2"]}22;" title="Automatisch vertaald uit het Engels">🌐 NL</span>'
+    # Korte impact (max 2 zinnen)
+    sentences = summ.split(". ")
+    impact_short = ". ".join(sentences[:2])
+    if len(sentences) > 2:
+        impact_short += "."
 
-    # ─── HERO IMAGE (eerste artikel met afbeelding) ───
-    hero_html = ""
-    if hero and img:
-        hero_html = f'''<div style="position:relative;border-radius:12px 12px 0 0;overflow:hidden;margin:-14px -16px 12px -16px;">
-<img src="{img}" style="width:100%;height:180px;object-fit:cover;display:block;" alt="" referrerpolicy="no-referrer" />
-<div style="position:absolute;bottom:0;left:0;right:0;height:80px;background:linear-gradient(transparent,{C["base"]}ee);"></div>
-</div>'''
-
-    # ─── THUMBNAIL (compact, naast de titel) ───
-    thumb_html = ""
-    if img and not hero:
-        thumb_html = f'<img src="{img}" style="width:72px;height:72px;object-fit:cover;border-radius:8px;flex-shrink:0;" alt="" referrerpolicy="no-referrer" />'
-
-    # ─── META BAR (shared) ───
-    meta_bar = f'''<div style="display:flex;align-items:center;gap:6px;margin-top:8px;">
-<span style="font-size:10px;padding:2px 8px;border-radius:4px;background:{C["s1"]}44;color:{C["st0"]};font-weight:600;">{bl}</span>
-<span style="font-size:11px;color:{C["o1"]};">{src}</span>
-{f'<span style="font-size:10px;color:{C["s2"]};">{ago}</span>' if ago else ''}
-{translate_badge}
-<span style="flex:1;"></span>
-<a href="{save_url}" style="font-size:10px;padding:3px 8px;border-radius:4px;background:{C["s2"]}15;color:{C["st0"]};text-decoration:none;border:1px solid {C["s2"]}25;" title="Bewaar als note in Obsidian vault">💾 Bewaar</a>
-</div>'''
-
-    chevron = f'<div style="width:24px;height:24px;border-radius:6px;background:{C["s1"]}44;color:{C["o0"]};display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;margin-top:2px;">▾</div>'
-
-    # ─── INGEKLAPT ───
-    if hero and img:
-        # Hero layout: grote afbeelding boven de titel
-        collapsed = f'''{hero_html}<div style="flex:1;">
-<div style="font-size:15px;font-weight:600;color:{C["t"]};line-height:1.4;margin-bottom:6px;">{title}</div>
-<div style="font-size:13px;color:{C["st0"]};line-height:1.6;">{summ[:180]}{"..." if len(summ)>180 else ""}</div>
-{meta_bar}
-</div>
-{chevron}'''
-    elif thumb_html:
-        # Thumbnail layout: kleine afbeelding rechts
-        collapsed = f'''<div style="display:flex;gap:12px;flex:1;">
-<div style="flex:1;">
-<div style="font-size:15px;font-weight:600;color:{C["t"]};line-height:1.4;margin-bottom:6px;">{title}</div>
-<div style="font-size:13px;color:{C["st0"]};line-height:1.6;">{summ[:150]}{"..." if len(summ)>150 else ""}</div>
-{meta_bar}
-</div>
-{thumb_html}
-</div>
-{chevron}'''
-    else:
-        # Geen afbeelding
-        collapsed = f'''<div style="flex:1;">
-<div style="font-size:15px;font-weight:600;color:{C["t"]};line-height:1.4;margin-bottom:6px;">{title}</div>
-<div style="font-size:13px;color:{C["st0"]};line-height:1.6;">{summ[:180]}{"..." if len(summ)>180 else ""}</div>
-{meta_bar}
-</div>
-{chevron}'''
-
-    # Impact callout (alleen zichtbaar als ingeklapt — verborgen bij open via CSS)
-    callout = f'''<div class="ns-callout-collapsed" style="padding:0 16px 14px;">
-<div style="border-left:3px solid {C["s2"]};background:{C["s2"]}08;padding:10px 14px;border-radius:0 8px 8px 0;">
-<div style="font-size:12px;font-weight:600;color:{C["st0"]};margin-bottom:4px;">🔍 Impact analyse</div>
-<div style="font-size:12px;color:{C["st1"]};line-height:1.6;">{short_callout}</div>
-</div>
-</div>'''
-
-    # ─── UITGEKLAPT ───
-    # Afbeelding in uitgeklapte weergave (als beschikbaar en niet al hero)
-    expanded_img = ""
-    if img and not hero:
-        expanded_img = f'''<div style="margin-bottom:16px;">
-<img src="{img}" style="width:100%;max-height:250px;object-fit:cover;border-radius:10px;display:block;" alt="" referrerpolicy="no-referrer" />
-</div>'''
-
-    # Bronnen pill
-    src_pill = f'''<a href="{link}" target="_blank" style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;background:{C["s0"]}66;border:1px solid {C["s0"]};text-decoration:none;">
-<span style="font-size:10px;padding:1px 6px;border-radius:3px;background:{C["s1"]}44;color:{C["st0"]};font-weight:600;border:1px solid {C["s1"]};">{bl}</span>
-<span style="font-size:12px;color:{C["t"]};font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{src}: {title[:55]}{"..." if len(title)>55 else ""}</span>
-<span style="font-size:10px;color:{C["o0"]};font-family:monospace;">{dom}</span>
-<span style="color:{C["o0"]};">↗</span>
-</a>'''
-
-    # Uitgebreide samenvatting (met origineel als vertaald)
-    orig_block = ""
-    if is_translated and summ_orig:
-        orig_block = f'''
-<details style="margin-top:8px;">
-<summary style="font-size:10px;color:{C["o0"]};cursor:pointer;list-style:none;">📄 Toon origineel (Engels)</summary>
-<div style="font-size:12px;color:{C["o1"]};line-height:1.6;padding:10px 14px;margin-top:6px;background:{C["s0"]}44;border-radius:8px;border-left:2px solid {C["s1"]};">
-<div style="font-size:11px;font-weight:600;color:{C["o0"]};margin-bottom:4px;">{title_orig}</div>
-{summ_orig}
-</div>
-</details>'''
-
-    ext_summ = f'''<div style="font-size:13px;color:{C["st1"]};line-height:1.8;padding:14px 16px;background:{C["mantle"]};border-radius:10px;border:1px solid {C["s0"]};">
-{summ}
-{orig_block}
-</div>'''
-
-    # Diepe analyse — accent border
-    deep = f'''<div style="border-left:3px solid {C["s2"]};background:{C["s2"]}08;padding:14px 16px;border-radius:0 10px 10px 0;">
-<div style="font-size:13px;color:{C["st1"]};line-height:1.8;">
-<em style="color:{C["o0"]};">Diepe impact analyse wordt gegenereerd bij gebruik van /briefing — Claude analyseert dan de relevantie voor Rabobank model validatie.</em>
-</div>
-</div>'''
-
-    # Actieknoppen — neutrale kleuren, accent als hover-hint
-    btn_s = f"padding:7px 14px;border-radius:8px;font-size:12px;font-weight:500;display:inline-flex;align-items:center;gap:6px;"
-    btns = f'''<div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:4px;">
-<a href="{save_url}" style="{btn_s}background:{C["s2"]}12;border:1px solid {C["s2"]}25;color:{C["st0"]};text-decoration:none;">💾 Opslaan als note in vault</a>
-<span style="{btn_s}background:{C["s1"]}22;border:1px solid {C["s1"]};color:{C["st0"]};cursor:pointer;">🔍 Diepere analyse genereren</span>
-<span style="{btn_s}background:{C["s1"]}22;border:1px solid {C["s1"]};color:{C["st0"]};cursor:pointer;">🎙️ Podcast paper maken</span>
-<span style="{btn_s}background:{C["s1"]}22;border:1px solid {C["s1"]};color:{C["o1"]};cursor:pointer;font-size:11px;">📋 Kopieer samenvatting</span>
-</div>'''
+    # ════════════════════════════════════
+    # INGEKLAPT: kop + 2 regels + impact callout
+    # ════════════════════════════════════
 
     return f'''
-<details class="ns-article" style="border-radius:12px;overflow:hidden;border:1px solid {C["s0"]};margin-bottom:8px;">
-<summary style="padding:14px 16px;cursor:pointer;list-style:none;display:flex;align-items:start;gap:12px;">
-{collapsed}
+<details class="ns-article" style="border-radius:12px;overflow:hidden;border:1px solid {C["s0"]};margin-bottom:10px;">
+<summary style="padding:14px 16px;cursor:pointer;list-style:none;">
+<div style="display:flex;align-items:start;gap:12px;">
+<div style="flex:1;">
+<div style="font-size:15px;font-weight:600;color:{C["t"]};line-height:1.4;">{title}</div>
+<div style="font-size:13px;color:{C["st0"]};line-height:1.6;margin-top:6px;">{summ[:200]}{"..." if len(summ)>200 else ""}</div>
+</div>
+<div style="width:24px;height:24px;border-radius:6px;background:{C["s1"]}44;color:{C["o0"]};display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;margin-top:2px;">▾</div>
+</div>
 </summary>
 
-{callout}
+<div class="ns-callout-collapsed" style="padding:0 16px 14px;">
+<div style="border-left:3px solid {C["s2"]};background:{C["s2"]}08;padding:10px 14px;border-radius:0 8px 8px 0;">
+<div style="font-size:12px;font-weight:600;color:{C["st0"]};margin-bottom:4px;">🔍 Impact analyse</div>
+<div style="font-size:12px;color:{C["st1"]};line-height:1.6;">{impact_short[:200]}{"..." if len(impact_short)>200 else ""}</div>
+</div>
+</div>
 
 <div style="padding:0 16px 16px;">
 <div style="height:1px;background:{C["s1"]};margin:0 0 16px;"></div>
 
-{expanded_img}
+{f'<div style="margin-bottom:16px;"><img src="{img}" style="width:100%;max-height:250px;object-fit:cover;border-radius:10px;display:block;" alt="" referrerpolicy="no-referrer" /></div>' if img else ''}
 
 <div style="margin-bottom:16px;">
 <div style="font-size:11px;font-weight:600;color:{C["o1"]};text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">Bronnen</div>
-{src_pill}
+<a href="{link}" target="_blank" style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;background:{C["s0"]}66;border:1px solid {C["s0"]};text-decoration:none;">
+<span style="font-size:10px;padding:1px 6px;border-radius:3px;background:{C["s1"]}44;color:{C["st0"]};font-weight:600;border:1px solid {C["s1"]};">{bl}</span>
+<span style="font-size:12px;color:{C["t"]};font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{src}: {title[:55]}{"..." if len(title)>55 else ""}</span>
+<span style="font-size:10px;color:{C["o0"]};font-family:monospace;">{dom}</span>
+<span style="color:{C["o0"]};">↗</span>
+</a>
 </div>
 
 <div style="margin-bottom:16px;">
 <div style="font-size:11px;font-weight:600;color:{C["o1"]};text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">Uitgebreide samenvatting</div>
-{ext_summ}
+<div style="font-size:13px;color:{C["st1"]};line-height:1.8;padding:14px 16px;background:{C["mantle"]};border-radius:10px;border:1px solid {C["s0"]};">
+{summ}
+{f"""<details style="margin-top:8px;"><summary style="font-size:10px;color:{C["o0"]};cursor:pointer;list-style:none;">📄 Toon origineel (Engels)</summary><div style="font-size:12px;color:{C["o1"]};line-height:1.6;padding:10px 14px;margin-top:6px;background:{C["s0"]}44;border-radius:8px;border-left:2px solid {C["s1"]};"><div style="font-size:11px;font-weight:600;color:{C["o0"]};margin-bottom:4px;">{title_orig}</div>{summ_orig}</div></details>""" if is_translated and summ_orig else ""}
+</div>
 </div>
 
 <div style="margin-bottom:16px;">
 <div style="font-size:11px;font-weight:600;color:{C["o1"]};text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">Impact analyse</div>
-{deep}
+<div style="border-left:3px solid {C["s2"]};background:{C["s2"]}08;padding:14px 16px;border-radius:0 10px 10px 0;">
+<div style="font-size:13px;color:{C["st1"]};line-height:1.8;">
+<em style="color:{C["o0"]};">Diepe impact analyse wordt gegenereerd bij gebruik van /briefing.</em>
+</div>
+</div>
 </div>
 
-{btns}
+<div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:4px;">
+<a href="{save_url}" style="padding:7px 14px;border-radius:8px;font-size:12px;font-weight:500;display:inline-flex;align-items:center;gap:6px;background:{C["s2"]}12;border:1px solid {C["s2"]}25;color:{C["st0"]};text-decoration:none;">💾 Opslaan als note in vault</a>
+<span style="padding:7px 14px;border-radius:8px;font-size:12px;font-weight:500;display:inline-flex;align-items:center;gap:6px;background:{C["s1"]}22;border:1px solid {C["s1"]};color:{C["st0"]};cursor:pointer;">🔍 Diepere analyse genereren</span>
+<span style="padding:7px 14px;border-radius:8px;font-size:12px;font-weight:500;display:inline-flex;align-items:center;gap:6px;background:{C["s1"]}22;border:1px solid {C["s1"]};color:{C["st0"]};cursor:pointer;">🎙️ Podcast paper maken</span>
+<span style="padding:7px 14px;border-radius:8px;font-size:11px;font-weight:500;display:inline-flex;align-items:center;gap:6px;background:{C["s1"]}22;border:1px solid {C["s1"]};color:{C["o1"]};cursor:pointer;">📋 Kopieer samenvatting</span>
+</div>
+
 </div>
 </details>'''
 
@@ -283,13 +200,8 @@ cssclasses:
 
 """
 
-    hero_done = False
     for idx, item in enumerate(items[:10]):
-        # Eerste artikel met afbeelding als hero card
-        is_hero = not hero_done and item.get("image_url")
-        md += article(item, m["c"], tid, idx, hero=is_hero)
-        if is_hero:
-            hero_done = True
+        md += article(item, m["c"], tid, idx)
 
     # Vault notes (alleen relevante)
     if vault_data and vault_data.get("notes"):
