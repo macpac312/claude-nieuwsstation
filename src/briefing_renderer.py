@@ -62,14 +62,14 @@ def _esc(s):
 
 
 def article(a, tc, tid, idx, hero=False):
-    """Render één artikel conform mockup:
-    Ingeklapt: kop + 2 regels samenvatting + impact callout card
-    Uitgeklapt: bronnen pills + uitgebreide samenvatting + impact analyse + actiepunten + vault notes + knoppen
+    """Render één artikel als Obsidian callout met +/- toggle.
+    Ingeklapt: kop + 2 regels samenvatting + impact callout
+    Uitgeklapt: afbeelding + bronnen + uitgebreide samenvatting + impact analyse + knoppen
     """
-    title = _esc(a.get("title", ""))
-    summ = _esc(a.get("summary", ""))
+    title = a.get("title", "")
+    summ = a.get("summary", "")
     link = a.get("link", "")
-    src = _esc(a.get("source_name", ""))
+    src = a.get("source_name", "")
     st = a.get("source_type", "article")
     img = a.get("image_url", "")
     dom = _dom(link)
@@ -77,104 +77,73 @@ def article(a, tc, tid, idx, hero=False):
 
     from urllib.parse import quote
     is_translated = a.get("translated", False)
-    title_orig = _esc(a.get("title_original", "")) if is_translated else ""
-    summ_orig = _esc(a.get("summary_original", "")) if is_translated else ""
+    title_orig = a.get("title_original", "") if is_translated else ""
+    summ_orig = a.get("summary_original", "") if is_translated else ""
 
-    save_title = title.replace('"', '').replace("'", "").replace("&amp;", "&")
+    save_title = title.replace('"', '').replace("'", "")
     save_content = f"---\ndate: {datetime.now(timezone.utc).strftime('%Y-%m-%d')}\nsource: {src}\nurl: {link}\ntype: clipping\n---\n\n# {save_title}\n\nBron: [{src}]({link})\n\n{summ}"
     save_url = f"obsidian://new?vault=WorkMvMOBS&name=Clippings/{quote(save_title, safe='')}&content={quote(save_content, safe='')}"
+
+    # Korte samenvatting (max 2 regels)
+    short_summ = summ[:180] + "..." if len(summ) > 180 else summ
 
     # Korte impact (max 2 zinnen)
     sentences = summ.split(". ")
     impact_short = ". ".join(sentences[:2])
     if len(sentences) > 2:
         impact_short += "."
+    impact_short = impact_short[:200] + "..." if len(impact_short) > 200 else impact_short
 
-    # ════════════════════════════════════
-    # INGEKLAPT: kop + 2 regels + impact callout
-    # ════════════════════════════════════
+    # Prefix alle regels met > voor callout
+    def q(text, prefix="> "):
+        return "\n".join(prefix + line for line in text.split("\n"))
 
-    return f'''
-<details class="ns-article" style="border-radius:12px;overflow:hidden;border:1px solid {C["s0"]};margin-bottom:10px;">
-<summary style="padding:14px 16px;cursor:pointer;list-style:none;">
-<div style="display:flex;align-items:start;gap:12px;">
-<div style="flex:1;">
-<div style="font-size:15px;font-weight:600;color:{C["t"]};line-height:1.4;">{title}</div>
-<div style="font-size:13px;color:{C["st0"]};line-height:1.6;margin-top:6px;">{summ[:200]}{"..." if len(summ)>200 else ""}</div>
-</div>
-<div style="width:24px;height:24px;border-radius:6px;background:{C["s1"]}44;color:{C["o0"]};display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;margin-top:2px;">▾</div>
-</div>
-</summary>
+    # Afbeelding markdown
+    img_md = f"> ![{title}]({img})\n>\n" if img else ""
 
-<div class="ns-callout-collapsed" style="padding:0 16px 14px;">
-<div style="border-left:3px solid {C["s2"]};background:{C["s2"]}08;padding:10px 14px;border-radius:0 8px 8px 0;">
-<div style="font-size:12px;font-weight:600;color:{C["st0"]};margin-bottom:4px;">🔍 Impact analyse</div>
-<div style="font-size:12px;color:{C["st1"]};line-height:1.6;">{impact_short[:200]}{"..." if len(impact_short)>200 else ""}</div>
-</div>
-</div>
+    # Origineel (als vertaald)
+    orig_md = ""
+    if is_translated and summ_orig:
+        orig_md = f""">
+> > [!quote]- 📄 Toon origineel (Engels)
+> > **{title_orig}**
+> > {summ_orig}"""
 
-<div style="padding:0 16px 16px;">
-<div style="height:1px;background:{C["s1"]};margin:0 0 16px;"></div>
+    md = f"""
+> [!note]+ **{title}**
+> {short_summ}
+>
+> > [!tip] 🔍 Impact analyse
+> > {impact_short}
+>
+> ---
+>
+{img_md}> **BRONNEN**
+> `{bl}` [{src}: {title[:50]}{"..." if len(title) > 50 else ""}]({link}) · `{dom}` ↗
+>
+> **UITGEBREIDE SAMENVATTING**
+> {summ}
+{orig_md}
+>
+> **IMPACT ANALYSE**
+> *Diepe impact analyse wordt gegenereerd bij gebruik van /briefing.*
+>
+> [💾 Opslaan]({save_url}) · [🔍 Diepere analyse]({link}) · 🎙️ Podcast paper · 📋 Kopieer
 
-{f'<div style="margin-bottom:16px;"><img src="{img}" style="width:100%;max-height:250px;object-fit:cover;border-radius:10px;display:block;" alt="" referrerpolicy="no-referrer" /></div>' if img else ''}
-
-<div style="margin-bottom:16px;">
-<div style="font-size:11px;font-weight:600;color:{C["o1"]};text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">Bronnen</div>
-<a href="{link}" target="_blank" style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;background:{C["s0"]}66;border:1px solid {C["s0"]};text-decoration:none;">
-<span style="font-size:10px;padding:1px 6px;border-radius:3px;background:{C["s1"]}44;color:{C["st0"]};font-weight:600;border:1px solid {C["s1"]};">{bl}</span>
-<span style="font-size:12px;color:{C["t"]};font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{src}: {title[:55]}{"..." if len(title)>55 else ""}</span>
-<span style="font-size:10px;color:{C["o0"]};font-family:monospace;">{dom}</span>
-<span style="color:{C["o0"]};">↗</span>
-</a>
-</div>
-
-<div style="margin-bottom:16px;">
-<div style="font-size:11px;font-weight:600;color:{C["o1"]};text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">Uitgebreide samenvatting</div>
-<div style="font-size:13px;color:{C["st1"]};line-height:1.8;padding:14px 16px;background:{C["mantle"]};border-radius:10px;border:1px solid {C["s0"]};">
-{summ}
-{f"""<details style="margin-top:8px;"><summary style="font-size:10px;color:{C["o0"]};cursor:pointer;list-style:none;">📄 Toon origineel (Engels)</summary><div style="font-size:12px;color:{C["o1"]};line-height:1.6;padding:10px 14px;margin-top:6px;background:{C["s0"]}44;border-radius:8px;border-left:2px solid {C["s1"]};"><div style="font-size:11px;font-weight:600;color:{C["o0"]};margin-bottom:4px;">{title_orig}</div>{summ_orig}</div></details>""" if is_translated and summ_orig else ""}
-</div>
-</div>
-
-<div style="margin-bottom:16px;">
-<div style="font-size:11px;font-weight:600;color:{C["o1"]};text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">Impact analyse</div>
-<div style="border-left:3px solid {C["s2"]};background:{C["s2"]}08;padding:14px 16px;border-radius:0 10px 10px 0;">
-<div style="font-size:13px;color:{C["st1"]};line-height:1.8;">
-<em style="color:{C["o0"]};">Diepe impact analyse wordt gegenereerd bij gebruik van /briefing.</em>
-</div>
-</div>
-</div>
-
-<div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:4px;">
-<a href="{save_url}" style="padding:7px 14px;border-radius:8px;font-size:12px;font-weight:500;display:inline-flex;align-items:center;gap:6px;background:{C["s2"]}12;border:1px solid {C["s2"]}25;color:{C["st0"]};text-decoration:none;">💾 Opslaan als note in vault</a>
-<span style="padding:7px 14px;border-radius:8px;font-size:12px;font-weight:500;display:inline-flex;align-items:center;gap:6px;background:{C["s1"]}22;border:1px solid {C["s1"]};color:{C["st0"]};cursor:pointer;">🔍 Diepere analyse genereren</span>
-<span style="padding:7px 14px;border-radius:8px;font-size:12px;font-weight:500;display:inline-flex;align-items:center;gap:6px;background:{C["s1"]}22;border:1px solid {C["s1"]};color:{C["st0"]};cursor:pointer;">🎙️ Podcast paper maken</span>
-<span style="padding:7px 14px;border-radius:8px;font-size:11px;font-weight:500;display:inline-flex;align-items:center;gap:6px;background:{C["s1"]}22;border:1px solid {C["s1"]};color:{C["o1"]};cursor:pointer;">📋 Kopieer samenvatting</span>
-</div>
-
-</div>
-</details>'''
+"""
+    return md
 
 
 def _tab_bar(twi, active_tid, ds):
-    """Render de tab-balk bovenaan elke topic pagina. Links openen de andere topic files."""
-    tabs = ""
+    """Render de tab-balk als markdown links."""
+    tabs = []
     for tid, _ in twi:
         m = TOPIC.get(tid, {"icon": "📰", "c": C["s2"], "label": tid})
-        is_active = tid == active_tid
-        if is_active:
-            s = f"color:{C['t']};background:{C['base']};border-top:2px solid {C['s2']};font-weight:600;"
+        if tid == active_tid:
+            tabs.append(f"**{m['icon']} {m['label']}**")
         else:
-            s = f"color:{C['o0']};"
-        link = f"[[Briefings/{ds}/{m['label']}|{m['icon']} {m['label']}]]"
-        if is_active:
-            # Actieve tab als niet-klikbare span
-            tabs += f'<span style="padding:6px 14px;font-size:12px;{s}border-radius:6px 6px 0 0;display:inline-flex;align-items:center;gap:4px;">{m["icon"]} {m["label"]}</span>'
-        else:
-            tabs += f'<span style="padding:6px 14px;font-size:12px;{s}border-radius:6px 6px 0 0;display:inline-flex;align-items:center;gap:4px;cursor:pointer;">{link}</span>'
-    return f'''<div style="display:flex;background:{C["crust"]};border-bottom:1px solid {C["s0"]};padding:0 8px;overflow-x:auto;border-radius:8px 8px 0 0;margin-bottom:16px;">
-{tabs}
-</div>'''
+            tabs.append(f"[[Briefings/{ds}/{m['label']}|{m['icon']} {m['label']}]]")
+    return " · ".join(tabs) + "\n"
 
 
 def render_topic_page(tid, td, twi, ds, dnl, tot, vault_data=None):
@@ -196,19 +165,19 @@ cssclasses:
 
 # {m["icon"]} {m["label"]} — {dnl}
 
-<div style="font-size:12px;color:{C["o0"]};margin:4px 0 16px;">{len(items)} artikelen · {tot} bronnen totaal</div>
+*{len(items)} artikelen · {tot} bronnen totaal*
 
 """
 
     for idx, item in enumerate(items[:10]):
         md += article(item, m["c"], tid, idx)
 
-    # Vault notes (alleen relevante)
+    # Vault notes
     if vault_data and vault_data.get("notes"):
-        md += f'\n---\n\n## Gerelateerde vault notes\n\n<div style="display:flex;flex-wrap:wrap;gap:6px;margin:12px 0;">\n'
+        md += '\n---\n\n## Gerelateerde vault notes\n\n'
         for n in vault_data["notes"][:6]:
-            md += f'<span style="font-size:11px;padding:3px 8px;border-radius:4px;background:{C["s2"]}12;color:{C["st0"]};border:1px solid {C["s2"]}22;display:inline-block;">[[{n["title"]}]]</span>\n'
-        md += '</div>\n\n'
+            md += f'[[{n["title"]}]] · '
+        md += '\n\n'
 
     return md
 
@@ -246,36 +215,29 @@ cssclasses:
     for tid, td in twi:
         m = TOPIC.get(tid, {"icon": "📰", "c": C["s2"], "label": tid})
         count = len(td.get("items", []))
-        first_titles = [_esc(it.get("title", ""))[:60] for it in td.get("items", [])[:3]]
+        first_titles = [it.get("title", "")[:60] for it in td.get("items", [])[:3]]
 
-        md += f'''<div style="padding:14px 16px;border-radius:12px;border:1px solid {C["s0"]};margin-bottom:10px;border-left:3px solid {C["s2"]};">
-
-### [[Briefings/{ds}/{m["label"]}|{m["icon"]} {m["label"]}]] — {count} artikelen
-
-'''
+        md += f'### [[Briefings/{ds}/{m["label"]}|{m["icon"]} {m["label"]}]] — {count} artikelen\n\n'
         for t in first_titles:
             md += f'- {t}\n'
-        md += '\n</div>\n\n'
+        md += '\n'
 
     # Kruisverband
-    md += f'''---
+    md += """---
 
 ## 🔗 Kruisverband-analyse
 
-<div style="background:{C["mantle"]};border-radius:12px;padding:20px 24px;font-size:13px;color:{C["st1"]};line-height:1.7;border:1px solid {C["s0"]}44;border-left:3px solid {C["s2"]}44;">
+> [!abstract] Kruisverbanden
+> *Kruisverband-analyse wordt gegenereerd bij gebruik van /briefing — Claude legt dan verbanden tussen topics.*
 
-*Kruisverband-analyse wordt gegenereerd bij gebruik van /briefing — Claude legt dan verbanden tussen topics.*
-
-</div>
-
-'''
+"""
 
     # Vault notes
     if vault_data and vault_data.get("notes"):
-        md += '## Gerelateerde vault notes\n\n<div style="display:flex;flex-wrap:wrap;gap:6px;margin:12px 0;">\n'
+        md += '## Gerelateerde vault notes\n\n'
         for n in vault_data["notes"][:8]:
-            md += f'<span style="font-size:11px;padding:3px 8px;border-radius:4px;background:{C["s2"]}12;color:{C["st0"]};border:1px solid {C["s2"]}22;display:inline-block;">[[{n["title"]}]]</span>\n'
-        md += '</div>\n\n'
+            md += f'[[{n["title"]}]] · '
+        md += '\n\n'
 
     # Bronnen
     md += '## Bronnen\n\n'
