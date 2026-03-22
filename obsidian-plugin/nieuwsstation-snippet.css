@@ -1,0 +1,140 @@
+/* ═══════════════════════════════════════════════════
+   Nieuwsstation Briefing CSS Snippet v4
+   Override Nightstation theme kleuren binnen briefings
+   ═══════════════════════════════════════════════════ */
+
+/* ─── Override Nightstation heading colors ─── */
+.ns-briefing h1,
+.ns-briefing .markdown-preview-view h1,
+.ns-briefing .cm-header-1 {
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  -webkit-text-fill-color: #cdd6f4 !important;
+  background-clip: unset !important;
+  color: #cdd6f4 !important;
+}
+
+.ns-briefing h2,
+.ns-briefing .markdown-preview-view h2,
+.ns-briefing .cm-header-2 {
+  color: #cdd6f4 !important;
+  border-bottom: none !important;
+  padding-bottom: 0 !important;
+}
+
+.ns-briefing h3,
+.ns-briefing .markdown-preview-view h3 {
+  color: #cdd6f4 !important;
+}
+
+/* ─── Override Nightstation link colors ─── */
+.ns-briefing a,
+.ns-briefing .markdown-preview-view a {
+  color: #a6adc8 !important;
+  border-bottom: none !important;
+}
+
+.ns-briefing a:hover,
+.ns-briefing .markdown-preview-view a:hover {
+  color: #cdd6f4 !important;
+}
+
+/* ─── Override inline-title ─── */
+.ns-briefing .inline-title {
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  -webkit-text-fill-color: #cdd6f4 !important;
+  color: #cdd6f4 !important;
+}
+
+/* ─── Override callout styling ─── */
+.ns-briefing .callout {
+  border-left-color: #45475a !important;
+}
+
+.ns-briefing .callout-title {
+  color: #a6adc8 !important;
+}
+
+/* ─── Details: hide native markers ─── */
+.ns-briefing details.ns-article summary {
+  list-style: none;
+}
+.ns-briefing details.ns-article summary::-webkit-details-marker,
+.ns-briefing details.ns-article summary::marker {
+  display: none;
+  content: "";
+}
+
+/* ─── Card hover & open ─── */
+.ns-briefing details.ns-article {
+  transition: all 0.2s ease;
+}
+.ns-briefing details.ns-article:hover {
+  border-color: #45475a !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+}
+.ns-briefing details.ns-article[open] {
+  border-color: #45475a !important;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.35);
+  background: #31324444 !important;
+}
+
+/* ─── Callout: hide when open ─── */
+.ns-briefing details.ns-article[open] > .ns-callout-collapsed {
+  display: none;
+}
+
+/* ─── Chevron rotate on open ─── */
+.ns-briefing details.ns-article[open] summary div:last-child {
+  transform: rotate(180deg);
+  color: #a6adc8 !important;
+  background: #45475a44 !important;
+}
+
+/* ─── Smooth expand animation ─── */
+.ns-briefing details.ns-article[open] > div:last-child {
+  animation: ns-slide 0.2s ease-out;
+}
+@keyframes ns-slide {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Buttons: hover ─── */
+.ns-briefing a[style*="border-radius"]:hover,
+.ns-briefing span[style*="cursor:pointer"]:hover,
+.ns-briefing span[style*="cursor: pointer"]:hover {
+  filter: brightness(1.15);
+  transition: filter 0.15s;
+}
+
+/* ─── Content width ─── */
+.ns-briefing .markdown-reading-view,
+.ns-briefing .markdown-preview-section {
+  max-width: 900px;
+}
+
+/* ─── Paragraph spacing ─── */
+.ns-briefing p {
+  margin-block-start: 0.4em;
+  margin-block-end: 0.4em;
+}
+
+/* ─── Scrollbar ─── */
+.ns-briefing::-webkit-scrollbar { width: 6px; }
+.ns-briefing::-webkit-scrollbar-track { background: transparent; }
+.ns-briefing::-webkit-scrollbar-thumb { background: #45475a; border-radius: 3px; }
+
+/* ─── Publish ─── */
+.publish-renderer .ns-briefing {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* ─── Print ─── */
+@media print {
+  .ns-briefing details.ns-article { page-break-inside: avoid; }
+  .ns-briefing .ns-callout-collapsed { display: block !important; }
+}
