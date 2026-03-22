@@ -62,9 +62,15 @@ def _esc(s):
 
 
 def article(a, tc, tid, idx, hero=False):
-    """Render één artikel als Obsidian callout met +/- toggle.
-    Ingeklapt: kop + 2 regels samenvatting + impact callout
+    """Render één artikel als custom Obsidian callout met card-look.
+
+    Ingeklapt: thumbnail + kop + 2 regels samenvatting + impact card-in-card
     Uitgeklapt: afbeelding + bronnen + uitgebreide samenvatting + impact analyse + knoppen
+
+    Callout types:
+      [!ns-article]+  — de hoofd-card (inklapbaar)
+      [!ns-impact]    — impact analyse card-in-card
+      [!ns-detail]-   — origineel Engels (ingeklapt)
     """
     title = a.get("title", "")
     summ = a.get("summary", "")
@@ -84,46 +90,62 @@ def article(a, tc, tid, idx, hero=False):
     save_content = f"---\ndate: {datetime.now(timezone.utc).strftime('%Y-%m-%d')}\nsource: {src}\nurl: {link}\ntype: clipping\n---\n\n# {save_title}\n\nBron: [{src}]({link})\n\n{summ}"
     save_url = f"obsidian://new?vault=WorkMvMOBS&name=Clippings/{quote(save_title, safe='')}&content={quote(save_content, safe='')}"
 
-    # Korte samenvatting (max 2 regels)
     short_summ = summ[:180] + "..." if len(summ) > 180 else summ
 
-    # Korte impact (max 2 zinnen)
     sentences = summ.split(". ")
     impact_short = ". ".join(sentences[:2])
     if len(sentences) > 2:
         impact_short += "."
     impact_short = impact_short[:200] + "..." if len(impact_short) > 200 else impact_short
 
-    # Prefix alle regels met > voor callout
-    def q(text, prefix="> "):
-        return "\n".join(prefix + line for line in text.split("\n"))
-
-    # Afbeelding markdown
-    img_md = f"> ![{title}]({img})\n>\n" if img else ""
+    # Thumbnail: als afbeelding beschikbaar, toon als eerste regel in callout
+    # CSS positioneert dit als thumbnail links
+    thumb = f"> ![thumb]({img})\n" if img else ""
 
     # Origineel (als vertaald)
-    orig_md = ""
+    orig_section = ""
     if is_translated and summ_orig:
-        orig_md = f""">
-> > [!quote]- 📄 Toon origineel (Engels)
+        orig_section = f""">
+> > [!ns-detail]- 📄 Toon origineel (Engels)
 > > **{title_orig}**
 > > {summ_orig}"""
 
-    md = f"""
-> [!note]+ **{title}**
-> {short_summ}
+    md = f"""> [!ns-article]+ **{title}**
+{thumb}> {short_summ}
 >
-> > [!tip] 🔍 Impact analyse
+> > [!ns-impact] 🔍 Impact analyse
 > > {impact_short}
 >
 > ---
 >
-{img_md}> **BRONNEN**
+> ![]({img})
+>
+> **BRONNEN**
 > `{bl}` [{src}: {title[:50]}{"..." if len(title) > 50 else ""}]({link}) · `{dom}` ↗
 >
 > **UITGEBREIDE SAMENVATTING**
 > {summ}
-{orig_md}
+{orig_section}
+>
+> **IMPACT ANALYSE**
+> *Diepe impact analyse wordt gegenereerd bij gebruik van /briefing.*
+>
+> [💾 Opslaan]({save_url}) · [🔍 Diepere analyse]({link}) · 🎙️ Podcast paper · 📋 Kopieer
+
+""" if img else f"""> [!ns-article]+ **{title}**
+> {short_summ}
+>
+> > [!ns-impact] 🔍 Impact analyse
+> > {impact_short}
+>
+> ---
+>
+> **BRONNEN**
+> `{bl}` [{src}: {title[:50]}{"..." if len(title) > 50 else ""}]({link}) · `{dom}` ↗
+>
+> **UITGEBREIDE SAMENVATTING**
+> {summ}
+{orig_section}
 >
 > **IMPACT ANALYSE**
 > *Diepe impact analyse wordt gegenereerd bij gebruik van /briefing.*
