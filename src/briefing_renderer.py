@@ -18,12 +18,12 @@ from urllib.parse import urlparse
 VAULT_PATH = Path.home() / "Documents" / "WorkMvMOBS"
 BRIEFINGS_PATH = VAULT_PATH / "Briefings"
 
-# Alleen neutrale kleuren — geen blauw/paars
+# Zuiver neutrale kleuren — wit/grijs, geen blauwe tint
 C = {
     "base": "#1e1e2e", "mantle": "#181825", "crust": "#11111b",
     "s0": "#313244", "s1": "#45475a", "s2": "#585b70",
-    "o0": "#6c7086", "o1": "#7f849c",
-    "t": "#cdd6f4", "st0": "#a6adc8", "st1": "#bac2de",
+    "o0": "#6c7086", "o1": "#8e8e9e",
+    "t": "#e0e0e0", "st0": "#b0b0b0", "st1": "#c8c8c8",
     "gr": "#a6e3a1", "yl": "#f9e2af",
     "pe": "#fab387", "rd": "#f38ba8",
 }
