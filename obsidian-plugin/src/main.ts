@@ -406,11 +406,11 @@ print(json.dumps(sources))
     new Notice(`Briefing starten: ${topicArgs}...`);
 
     try {
-      // Find claude binary
-      const claudePath = await this.findClaudeBinary();
-
       const home = process.env.HOME || "/home/marcel";
-      const proc = spawn(claudePath, ["-p", `Genereer een briefing voor de volgende topics: ${topicArgs}.${this.customPrompt ? ` Focus: ${this.customPrompt}` : ""} Volg het /briefing command in ~/.claude/commands/briefing.md.`], {
+      const scriptPath = `${home}/nieuwsstation/scripts/generate-briefing.sh`;
+      const args = [`--topics`, topicArgs, `--hours`, `24`];
+
+      const proc = spawn("/bin/bash", [scriptPath, ...args], {
         cwd: `${home}/nieuwsstation`,
         env: {
           ...process.env,
@@ -420,14 +420,22 @@ print(json.dumps(sources))
       });
 
       let output = "";
-      proc.stdout?.on("data", (d: Buffer) => output += d.toString());
+      proc.stdout?.on("data", (d: Buffer) => {
+        const line = d.toString();
+        output += line;
+        // Toon voortgang als notice
+        const match = line.match(/\[(\d)\/4\]/);
+        if (match) {
+          new Notice(line.trim(), 3000);
+        }
+      });
       proc.stderr?.on("data", (d: Buffer) => output += d.toString());
 
       proc.on("close", (code: number | null) => {
         this.generating = false;
         this.render();
         if (code === 0) {
-          new Notice("Briefing gereed! Check de Briefings map.", 5000);
+          new Notice("✅ Briefing gereed! Check de Briefings map.", 5000);
         } else {
           new Notice(`Briefing fout (code ${code}). Check de console.`, 5000);
           console.error("Nieuwsstation output:", output);
@@ -437,7 +445,7 @@ print(json.dumps(sources))
       proc.on("error", (err: Error) => {
         this.generating = false;
         this.render();
-        new Notice(`Kon Claude niet starten: ${err.message}`);
+        new Notice(`Kon generate-briefing.sh niet starten: ${err.message}`);
       });
     } catch (err) {
       this.generating = false;
