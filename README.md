@@ -95,6 +95,38 @@ Activeer de plugin in Obsidian onder Settings → Community plugins.
 
 Claude Code voert automatisch de volledige pipeline uit.
 
+### Via Claude Desktop (HTML direct in het gesprek)
+
+Sinds Claude Desktop HTML-bestanden rechtstreeks kan renderen, kun je de dagkrant in het gesprek laten verschijnen.
+
+**Eenmalige setup:**
+
+1. Kopieer `claude-config/claude_desktop_config.example.json` naar je Claude Desktop config-map:
+   - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+   - Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+2. Pas de paden aan (`/Users/JOUW_GEBRUIKER/...`) en herstart Claude Desktop.
+3. Zorg dat de slash-commands uit stap 7 staan in `~/.claude/commands/`.
+
+**Dagelijks gebruik:**
+
+Vraag Claude Desktop simpelweg: *"Maak de dagkrant van vandaag."* Claude voert via de shell-MCP uit:
+
+```bash
+bash ~/nieuwsstation/scripts/dagkrant.sh
+```
+
+Het wrapper-script fetcht data, vraagt Claude om het redactionele plan (`/dagkrant`-command) en rendert de HTML. Daarna leest Claude Desktop het bestand uit `~/Documents/WorkMvMOBS/Briefings/` via de filesystem-MCP en toont de dagkrant direct in het gesprek.
+
+**Handige flags:**
+
+```bash
+bash scripts/dagkrant.sh --with-api   # start ook de Achtergrond-server (poort 7432)
+bash scripts/dagkrant.sh --open       # open het HTML-bestand in de standaard browser
+bash scripts/dagkrant.sh --hours 48   # groter tijdvenster voor de fetch
+```
+
+Draait de api_server niet? Geen probleem: de "▶ Achtergrond"-knoppen detecteren dat en tonen een Claude-prompt die je direct in het gesprek kunt plakken (of simpelweg kunt uitvoeren als Claude Desktop de dagkrant al leest).
+
 ### Handmatig (stap voor stap)
 
 ```bash

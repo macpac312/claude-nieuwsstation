@@ -634,17 +634,45 @@ function generateBg(btn,ev){
     }
   })
   .catch(function(err){
-    var errHtml='<h4 style="color:var(--red)">Server niet bereikbaar</h4>'
+    var promptText='Geef achtergrond en analyse bij dit artikel: "'+title+'".'
+      +(summary?' Teaser: '+summary:'')
+      +(sources.length?' Bronnen: '+sources.join(', '):'');
+    var errHtml='<h4 style="color:var(--red)">Achtergrond-server niet bereikbaar</h4>'
       +'<p class="bg-byline">'+err.message+'</p>'
-      +'<p style="margin-top:1rem">Start de achtergrond-server in een terminal:</p>'
+      +'<p style="margin-top:1rem"><strong>Twee manieren om door te gaan:</strong></p>'
+      +'<p style="margin-top:.8rem;font-size:.88rem"><strong>1. Vraag Claude Desktop direct</strong> '
+      +'(je leest deze dagkrant immers al in Claude):</p>'
+      +'<blockquote style="cursor:pointer" onclick="navigator.clipboard&&navigator.clipboard.writeText(this.innerText)" '
+      +'title="Klik om te kopiëren">'+promptText+'</blockquote>'
+      +'<p style="margin-top:1rem;font-size:.88rem"><strong>2. Start de lokale API-server</strong> '
+      +'(voor automatische knoppen):</p>'
       +'<code style="display:block;background:var(--bg2);padding:.8rem 1rem;border-radius:8px;'
       +'margin:.8rem 0;font-size:.85rem">python3 ~/nieuwsstation/src/api_server.py</code>'
-      +'<p style="font-size:.82rem;color:var(--t3)">De server blijft actief totdat je het terminalvenster sluit. '
-      +'Vervolgens werken alle Achtergrond-knoppen in de dagkrant.</p>';
+      +'<p style="font-size:.8rem;color:var(--t3)">De server blijft actief tot je het terminalvenster sluit.</p>';
     if(bgPanel&&bgPanel.querySelector('.bg-inner'))
       bgPanel.querySelector('.bg-inner').innerHTML=errHtml;
   });
 }
+
+// ─── Pre-flight check: markeer Achtergrond-knoppen als server onbereikbaar ──
+// Draait op pagelaad. Als de api_server op 127.0.0.1:7432 niet antwoordt,
+// krijgen de knoppen een subtiele "offline"-styling maar blijven klikbaar
+// (dan verschijnt de fallback-tekst met Claude-prompt).
+document.addEventListener('DOMContentLoaded',function(){
+  var ctrl=('AbortController' in window)?new AbortController():null;
+  var timer=ctrl?setTimeout(function(){ctrl.abort();},800):null;
+  fetch(API_URL+'/status',{signal:ctrl?ctrl.signal:undefined})
+    .then(function(r){if(!r.ok)throw 0;document.body.setAttribute('data-api','online');})
+    .catch(function(){
+      document.body.setAttribute('data-api','offline');
+      var style=document.createElement('style');
+      style.textContent='[data-api="offline"] .bg-badge,[data-api="offline"] .bg-btn{'
+        +'opacity:.55;filter:grayscale(.4)}'
+        +'[data-api="offline"] .bg-badge::after{content:" (vraag Claude)";font-weight:400;opacity:.8}';
+      document.head.appendChild(style);
+    })
+    .finally(function(){if(timer)clearTimeout(timer);});
+});
 
 // ─── Vault notitie openen in Obsidian split-right ─────────────────────────
 function toggleMore(sid){
