@@ -603,6 +603,32 @@ function generateBg(btn,ev){
   var key=title.slice(0,60).toLowerCase();
   if(_bgCache[key]){_buildPanel(_bgCache[key],saveData);return;}
 
+  // ─── Claude Desktop MCP-modus: kort-cirkel direct naar prompt ──────────────
+  // Als de pre-flight /status check eerder offline rapporteerde, slaan we de
+  // fetch over en tonen direct de copy-prompt voor de generate_background tool.
+  if(document.body.getAttribute('data-api')==='offline'){
+    var sourcesStr=sources.length?' Bronnen: '+sources.join(', '):'';
+    var mcpPrompt='Roep tool nieuwsstation.generate_background aan met:\n'
+      +'  title: "'+title.replace(/"/g,'\\"')+'"\n'
+      +(summary?'  summary: "'+summary.replace(/"/g,'\\"').slice(0,200)+'"\n':'')
+      +(topic?'  topic: "'+topic+'"\n':'')
+      +(sources.length?'  sources: '+JSON.stringify(sources.slice(0,3))+'\n':'')
+      +'\nToon vervolgens de teruggegeven HTML inline.';
+    var copyHtml='<h4>Achtergrond bij &quot;'+title+'&quot;</h4>'
+      +'<p class="bg-byline">Vraag Claude om dit artikel verder uit te diepen.</p>'
+      +'<p style="margin-top:1rem;font-size:.9rem">Plak deze prompt in het gesprek '
+      +'(klik onderstaand blok om te kopi&euml;ren):</p>'
+      +'<pre style="cursor:pointer;background:var(--bg2);padding:1rem;border-radius:8px;'
+      +'font-size:.82rem;line-height:1.5;white-space:pre-wrap;border:1px solid var(--border)" '
+      +'onclick="navigator.clipboard&amp;&amp;navigator.clipboard.writeText(this.innerText);'
+      +'this.style.borderColor=\'#16a34a\';this.title=\'Gekopieerd!\'" '
+      +'title="Klik om te kopi&euml;ren">'+mcpPrompt+'</pre>'
+      +'<p style="font-size:.75rem;color:var(--t3);margin-top:.6rem">'
+      +'(Geen api_server.py nodig &mdash; Claude Desktop roept zelf de MCP-tool aan.)</p>';
+    _buildPanel(copyHtml,saveData);
+    return;
+  }
+
   // Loading state
   _buildPanel('<div style="padding:3rem 2rem;text-align:center;color:var(--t3)">'
     +'<div style="font-size:2.5rem;margin-bottom:1rem;animation:livePulse 1.5s infinite">&#9654;</div>'

@@ -87,45 +87,56 @@ Activeer de plugin in Obsidian onder Settings → Community plugins.
 
 ## Gebruik
 
-### Via Claude Code (aanbevolen)
+### Via Claude Desktop (HTML direct in het gesprek) — aanbevolen
+
+De nieuwste Claude Desktop kan HTML inline renderen, en met de meegeleverde
+**MCP-server** kan Claude de hele pipeline zelf draaien — geen aparte
+terminal, geen `/tmp`-permissieprobleem, geen losse `api_server.py`.
+
+**Eenmalige setup:**
+
+```bash
+cd ~/nieuwsstation
+pip install -e mcp-server/
+```
+
+Kopieer `claude-config/claude_desktop_config.example.json` naar:
+- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- Linux: `~/.config/Claude/claude_desktop_config.json`
+- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+
+Pas paden aan, vul `ANTHROPIC_API_KEY` in (optioneel, alleen voor
+achtergrondartikelen), herstart Claude Desktop. Zie
+[mcp-server/README.md](mcp-server/README.md) voor details.
+
+**Dagelijks gebruik:**
+
+Tik in Claude Desktop:
+
+```
+/dagkrant
+```
+
+Of natuurlijke taal: *"maak de dagkrant van vandaag"*. Claude:
+1. roept `nieuwsstation.fetch_news()` → krijgt 40 artikelen + widgets terug
+2. bouwt het redactionele plan in-context
+3. roept `nieuwsstation.render_dagkrant(plan)` → krijgt het HTML-pad terug
+4. leest het bestand via filesystem-MCP en rendert het inline in het gesprek
+
+### Via Claude Code (CLI)
 
 ```
 /nieuwsstation
 ```
 
-Claude Code voert automatisch de volledige pipeline uit.
-
-### Via Claude Desktop (HTML direct in het gesprek)
-
-Sinds Claude Desktop HTML-bestanden rechtstreeks kan renderen, kun je de dagkrant in het gesprek laten verschijnen.
-
-**Eenmalige setup:**
-
-1. Kopieer `claude-config/claude_desktop_config.example.json` naar je Claude Desktop config-map:
-   - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
-   - Windows: `%APPDATA%\Claude\claude_desktop_config.json`
-2. Pas de paden aan (`/Users/JOUW_GEBRUIKER/...`) en herstart Claude Desktop.
-3. Zorg dat de slash-commands uit stap 7 staan in `~/.claude/commands/`.
-
-**Dagelijks gebruik:**
-
-Vraag Claude Desktop simpelweg: *"Maak de dagkrant van vandaag."* Claude voert via de shell-MCP uit:
+Of het wrapper-script in een terminal:
 
 ```bash
-bash ~/nieuwsstation/scripts/dagkrant.sh
+bash scripts/dagkrant.sh             # fetch + plan + render
+bash scripts/dagkrant.sh --with-api  # start ook api_server.py voor ▶ Achtergrond-knoppen
+bash scripts/dagkrant.sh --open      # open het HTML-bestand in de standaard browser
+bash scripts/dagkrant.sh --hours 48  # groter tijdvenster voor de fetch
 ```
-
-Het wrapper-script fetcht data, vraagt Claude om het redactionele plan (`/dagkrant`-command) en rendert de HTML. Daarna leest Claude Desktop het bestand uit `~/Documents/WorkMvMOBS/Briefings/` via de filesystem-MCP en toont de dagkrant direct in het gesprek.
-
-**Handige flags:**
-
-```bash
-bash scripts/dagkrant.sh --with-api   # start ook de Achtergrond-server (poort 7432)
-bash scripts/dagkrant.sh --open       # open het HTML-bestand in de standaard browser
-bash scripts/dagkrant.sh --hours 48   # groter tijdvenster voor de fetch
-```
-
-Draait de api_server niet? Geen probleem: de "▶ Achtergrond"-knoppen detecteren dat en tonen een Claude-prompt die je direct in het gesprek kunt plakken (of simpelweg kunt uitvoeren als Claude Desktop de dagkrant al leest).
 
 ### Handmatig (stap voor stap)
 

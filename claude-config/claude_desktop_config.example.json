@@ -1,43 +1,44 @@
 {
-  "_comment": "Voorbeeld-configuratie voor Claude Desktop (macOS: ~/Library/Application Support/Claude/claude_desktop_config.json).",
-  "_comment_2": "Kopieer dit bestand naar de juiste plek en pas de paden aan. Na aanpassing Claude Desktop herstarten.",
-  "_comment_3": "Met deze MCP-servers kan Claude Desktop: (1) de nieuwsstation-repo en Briefings-map lezen/schrijven, (2) scripts uitvoeren via de shell.",
+  "_comment": "Voorbeeld-configuratie voor Claude Desktop. Kopieer naar de juiste plek:",
+  "_comment_macos":  "macOS:   ~/Library/Application Support/Claude/claude_desktop_config.json",
+  "_comment_linux":  "Linux:   ~/.config/Claude/claude_desktop_config.json",
+  "_comment_windows":"Windows: %APPDATA%\\Claude\\claude_desktop_config.json",
+  "_comment_paths":  "Pas alle paden /home/marcel/... aan naar je eigen gebruikersnaam.",
+  "_comment_restart":"Herstart Claude Desktop na elke wijziging.",
 
   "mcpServers": {
+
     "filesystem": {
+      "_comment": "Geeft Claude Desktop lees-toegang tot de repo en de Briefings-map.",
       "command": "npx",
       "args": [
         "-y",
         "@modelcontextprotocol/server-filesystem",
-        "/Users/JOUW_GEBRUIKER/nieuwsstation",
-        "/Users/JOUW_GEBRUIKER/Documents/WorkMvMOBS",
-        "/tmp"
+        "/home/marcel/nieuwsstation",
+        "/home/marcel/Documents/WorkMvMOBS"
       ]
     },
 
-    "shell": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-shell"
-      ],
+    "nieuwsstation": {
+      "_comment": "Custom MCP-server. Levert tools fetch_news, render_dagkrant, generate_background.",
+      "_comment_install": "Installatie eenmalig:  cd ~/nieuwsstation && pip install -e mcp-server/",
+      "_comment_test":    "Test handmatig:        python3 -m nieuwsstation_mcp",
+      "command": "python3",
+      "args": ["-m", "nieuwsstation_mcp"],
       "env": {
-        "ALLOWED_COMMANDS": "bash,python3,open"
+        "NIEUWSSTATION_HOME": "/home/marcel/nieuwsstation",
+        "BRIEFINGS_DIR":      "/home/marcel/Documents/WorkMvMOBS/Briefings",
+        "ANTHROPIC_API_KEY":  "sk-ant-..."
       }
-    },
-
-    "nieuwsstation-api": {
-      "_comment": "Optioneel — alleen nodig als je de Achtergrond-knoppen in de HTML wilt gebruiken.",
-      "_comment_2": "Start handmatig in een terminal: python3 ~/nieuwsstation/src/api_server.py",
-      "_comment_3": "Of laat Claude Desktop dit via de shell-MCP triggeren."
     }
+
   },
 
   "_flow": [
-    "1. Vraag Claude Desktop: 'Maak de dagkrant van vandaag'",
-    "2. Claude roept via shell-MCP:  bash ~/nieuwsstation/scripts/dagkrant.sh",
-    "3. Script fetcht data, roept /dagkrant slash-command, rendert HTML",
-    "4. Claude leest Briefings/YYYY-MM-DD-dagkrant.html via filesystem-MCP",
-    "5. Claude Desktop rendert de HTML direct in het gesprek"
+    "1. Vraag in Claude Desktop:  'maak de dagkrant van vandaag' (of tik /dagkrant)",
+    "2. Claude roept tool nieuwsstation.fetch_news(hours=24)",
+    "3. Claude bouwt het redactionele plan in-context (geen /tmp nodig)",
+    "4. Claude roept tool nieuwsstation.render_dagkrant(plan)",
+    "5. Claude leest het HTML-pad via filesystem-MCP en rendert inline"
   ]
 }

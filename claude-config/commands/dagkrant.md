@@ -1,25 +1,38 @@
-Genereer een redactioneel plan voor De Dagkrant als JSON-bestand.
+Genereer en toon **De Dagkrant** als interactieve HTML in dit gesprek.
 
-## Input — data staat al klaar, haal NIETS op
+## Stappenplan (volg ze EXACT in volgorde)
 
-Lees de volgende bestanden:
-1. `/tmp/dagkrant-selected.json` — voorgeselecteerde nieuwsartikelen
-2. `/tmp/dagkrant-widgets.json` — pre-gefetchte widgets (weer, markten)
-3. `~/nieuwsstation/focus.md` — focus-onderwerpen
+### Stap 1 — Nieuws ophalen
+Roep tool aan: `nieuwsstation.fetch_news(hours=24)`
 
-Voer GEEN WebFetch of WebSearch uit. Gebruik uitsluitend de gelezen data.
-Foto's: gebruik `foto_url: ""` en `foto_credit: ""`.
+Resultaat: dict met `selected.topics` (per sectie geselecteerde artikelen),
+`widgets` (weer + markten + trends), en `stats` (aantallen, logs).
 
-## Output: schrijf JSON naar /tmp/dagkrant-plan.json
+### Stap 2 — Focus lezen (optioneel)
+Lees `~/nieuwsstation/focus.md` via filesystem-MCP indien aanwezig.
+Dit bevat actieve onderwerpen die prioriteit verdienen in topnieuws/hero.
 
-Schrijf het onderstaande JSON-object naar `/tmp/dagkrant-plan.json` via de Write tool.
-Schrijf ALLEEN het JSON-object, geen toelichting, geen markdown opmaak.
+### Stap 3 — Redactioneel plan bouwen
+Bouw in-context een JSON-plan volgens onderstaand schema. Gebruik UITSLUITEND
+artikelen uit `selected.topics` en widgets uit `widgets`. Voer GEEN extra
+WebFetch of WebSearch uit.
 
-Vereist JSON-schema:
-```
+### Stap 4 — Renderen
+Roep tool aan: `nieuwsstation.render_dagkrant(plan)` met het plan-object
+als enige argument. Resultaat bevat `path`, `size_kb`, `open_url`.
+
+### Stap 5 — HTML tonen
+Lees het bestand op `result.path` via filesystem-MCP en toon de HTML inline
+in dit gesprek (Claude Desktop rendert HTML rechtstreeks).
+
+---
+
+## JSON-schema voor het plan (Stap 3)
+
+```json
 {
-  "datum":     "zondag 6 april 2026",
-  "datum_iso": "2026-04-06",
+  "datum":     "donderdag 16 april 2026",
+  "datum_iso": "2026-04-16",
   "tijd":      "09:00",
   "tijdzone":  "CEST",
 
@@ -51,7 +64,7 @@ Vereist JSON-schema:
     "foto_credit": "",
     "tag":         "wereld",
     "tag_label":   "Wereld",
-    "datum":       "6 apr"
+    "datum":       "16 apr"
   },
 
   "topnieuws": [
@@ -63,7 +76,7 @@ Vereist JSON-schema:
       "trap3_md": null,
       "bronnen":  [{"naam": "NOS", "url": "https://..."}],
       "tag":      "nederland", "tag_label": "Nederland",
-      "datum":    "6 apr, 08:00 CEST"
+      "datum":    "16 apr, 08:00 CEST"
     }
   ],
 
@@ -83,16 +96,15 @@ Vereist JSON-schema:
     "aitech": {"artikelen": [...]}
   },
 
-  "kruisverband_md": "150-250 woorden analyse.",
+  "kruisverband_md": "150-250 woorden analyse die rode draden tussen secties blootlegt.",
   "vault_connecties": ["Term1", "Term2"],
   "bronnen_lijst": ["NOS", "Guardian", "FD"]
 }
 ```
 
-## Artikel-schema
+## Artikel-schema (binnen `topnieuws` en `secties.*.artikelen`)
 
-Elk artikel in `topnieuws` en `secties`:
-```
+```json
 {
   "id":       "unieke-slug",
   "titel":    "...",
@@ -102,32 +114,33 @@ Elk artikel in `topnieuws` en `secties`:
   "bronnen":  [{"naam": "NOS", "url": "https://..."}],
   "tag":      "nederland|wereld|financieel|sport|aitech",
   "tag_label":"Nederland|Wereld|Financieel|Sport|AI & Tech",
-  "datum":    "6 apr, 08:00 CEST"
+  "datum":    "16 apr, 08:00 CEST"
 }
 ```
 
-## Inhoudelijke instructies
+## Inhoudelijke regels
 
 ### Aantallen
 - `topnieuws`: precies 5 artikelen
 - Per sectie: 3-4 artikelen
-- `trap3_md`: altijd `null` (achtergrond op aanvraag via knoppen in de HTML)
+- `trap3_md`: altijd `null` (achtergrond komt on-demand via `generate_background`-tool)
 - Hero: 1 artikel met langere `body_md` (3 paragrafen)
 
 ### Prioritering
-- Focus-onderwerpen uit focus.md krijgen prioriteit
-- AI/Anthropic-nieuws altijd in aitech-sectie bovenaan
-- FD-artikelen voor financieel
+- Onderwerpen uit `~/nieuwsstation/focus.md` krijgen voorrang in topnieuws/hero
+- AI/Anthropic-nieuws altijd bovenaan in de aitech-sectie
+- FD-artikelen domineren financieel
+- Regulatoir nieuws (EBA/ECB/DNB/AFM) hoort in een eigen sectie als die er is
 
-### Stijl body_md
-- Schrijf in het Nederlands
-- Gebruik `\n\n` voor nieuwe alinea's
-- Nadruk: `**vet**`
-- Citaten: `> tekst`
+### Stijl van `body_md`
+- Nederlands
+- `\n\n` voor nieuwe alinea's
+- `**vet**` voor nadruk
+- `> citaat` voor quotes
 
 ### Widgets
-- Gebruik de waarden uit `/tmp/dagkrant-widgets.json` exact zoals ze zijn
-- Als een waarde "?" is, gebruik dan "—"
+- Gebruik `widgets`-waarden EXACT zoals teruggegeven door `fetch_news`
+- Vervang `"?"` door `"—"` in de output
 
-## Secties en aanpassingen
+## Aanvullende instructies van de gebruiker
 $ARGUMENTS
