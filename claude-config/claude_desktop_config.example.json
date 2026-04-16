@@ -20,15 +20,15 @@
     },
 
     "nieuwsstation": {
-      "_comment": "Custom MCP-server. Levert tools fetch_news, render_dagkrant, generate_background.",
+      "_comment":         "Custom MCP-server. Levert tools fetch_news en render_dagkrant.",
+      "_comment_claude_max": "Geen ANTHROPIC_API_KEY nodig — Claude Max-abonnement van Claude Desktop dekt alle tekst-generatie (plan + kruisverbanden + achtergrondartikelen).",
       "_comment_install": "Installatie eenmalig:  cd ~/nieuwsstation && pip install -e mcp-server/",
       "_comment_test":    "Test handmatig:        python3 -m nieuwsstation_mcp",
       "command": "python3",
       "args": ["-m", "nieuwsstation_mcp"],
       "env": {
         "NIEUWSSTATION_HOME": "/home/marcel/nieuwsstation",
-        "BRIEFINGS_DIR":      "/home/marcel/Documents/WorkMvMOBS/Briefings",
-        "ANTHROPIC_API_KEY":  "sk-ant-..."
+        "BRIEFINGS_DIR":      "/home/marcel/Documents/WorkMvMOBS/Briefings"
       }
     }
 

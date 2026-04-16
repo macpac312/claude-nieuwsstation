@@ -11,7 +11,12 @@ volledige dagkrant kan genereren en inline weergeven.
 |------|------|
 | `fetch_news(hours=24)` | RSS + Guardian + FD ophalen, dedupliceren, top-40 selecteren, widgets toevoegen. Returns dict met `selected`, `widgets`, `stats`. |
 | `render_dagkrant(plan)` | Render het redactionele plan naar `~/Documents/WorkMvMOBS/Briefings/YYYY-MM-DD-dagkrant.html` (~130 KB). Returns `{path, size_kb, open_url, ...}`. |
-| `generate_background(title, summary, sources, topic)` | On-demand achtergrondartikel via Claude Opus. Vervangt de oude `api_server.py`. Vereist `ANTHROPIC_API_KEY`. |
+| `generate_background(...)` *(optioneel)* | Alleen geregistreerd als `NIEUWSSTATION_ENABLE_BACKGROUND_TOOL=1` én een `ANTHROPIC_API_KEY` is gezet. **Niet nodig voor Claude Max** — Claude Desktop schrijft achtergrondartikelen direct in het gesprek (binnen je Max-budget). |
+
+> **Claude Max gebruikers:** je hoeft géén `ANTHROPIC_API_KEY` in te vullen.
+> De tekst-generatie (redactioneel plan, kruisverbanden, achtergrond) draait
+> volledig op Claude Desktop's Claude Max-abonnement. De MCP-server doet
+> alleen het ophalen van nieuws en het renderen van de HTML.
 
 ## Installatie
 
@@ -32,9 +37,11 @@ Kopieer `claude-config/claude_desktop_config.example.json` naar:
 | Linux | `~/.config/Claude/claude_desktop_config.json` |
 | Windows | `%APPDATA%\Claude\claude_desktop_config.json` |
 
-Pas de paden `/home/marcel/...` aan naar je eigen gebruikersnaam, vul je
-`ANTHROPIC_API_KEY` in (alleen nodig voor `generate_background`), en
-**herstart Claude Desktop**.
+Pas de paden `/home/marcel/...` aan naar je eigen gebruikersnaam en
+**herstart Claude Desktop**. Geen API-key nodig voor de standaard-flow
+(`fetch_news` + `render_dagkrant`); alleen wie de optionele
+`generate_background`-tool wil aanzetten heeft een `ANTHROPIC_API_KEY` +
+`NIEUWSSTATION_ENABLE_BACKGROUND_TOOL=1` nodig.
 
 ### 3. Verificatie
 

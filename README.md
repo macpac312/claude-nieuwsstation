@@ -105,8 +105,9 @@ Kopieer `claude-config/claude_desktop_config.example.json` naar:
 - Linux: `~/.config/Claude/claude_desktop_config.json`
 - Windows: `%APPDATA%\Claude\claude_desktop_config.json`
 
-Pas paden aan, vul `ANTHROPIC_API_KEY` in (optioneel, alleen voor
-achtergrondartikelen), herstart Claude Desktop. Zie
+Pas de paden aan en herstart Claude Desktop. **Geen API-key nodig** — je
+Claude Max-abonnement dekt alle tekst-generatie (redactioneel plan,
+kruisverbanden, achtergrondartikelen). Zie
 [mcp-server/README.md](mcp-server/README.md) voor details.
 
 **Dagelijks gebruik:**

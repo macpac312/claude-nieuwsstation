@@ -1,8 +1,16 @@
 """MCP-server voor Nieuwsstation.
 
-Registreert de tools `fetch_news`, `render_dagkrant` en
-`generate_background` zodat Claude Desktop ze direct kan aanroepen.
+Registreert de tools `fetch_news` en `render_dagkrant` zodat Claude Desktop
+de hele dagkrant-pipeline zelf kan draaien. Geen Anthropic-API-key nodig:
+de tekst-generatie (redactioneel plan, kruisverbanden, achtergrondartikelen)
+gebeurt door Claude Desktop zélf — onder je Claude Max-abonnement.
+
+Zet `NIEUWSSTATION_ENABLE_BACKGROUND_TOOL=1` om de optionele
+`generate_background` tool extra te registreren (vereist wél een aparte
+ANTHROPIC_API_KEY — alleen relevant voor wie de oude api_server.py-route
+wil bouwen via de MCP-server in plaats van Claude Max).
 """
+import os
 import sys
 from typing import Any
 
@@ -18,7 +26,6 @@ except ImportError as e:
 
 from .tools.fetch import fetch_news as _fetch_news
 from .tools.render import render_dagkrant as _render_dagkrant
-from .tools.background import generate_background as _generate_background
 
 
 mcp = FastMCP("nieuwsstation")
@@ -69,26 +76,29 @@ def render_dagkrant(plan: dict[str, Any]) -> dict[str, Any]:
     return _render_dagkrant(plan)
 
 
-@mcp.tool()
-def generate_background(
-    title: str,
-    summary: str = "",
-    sources: list[str] | None = None,
-    topic: str = "",
-) -> dict[str, Any]:
-    """Genereer een diepgaand achtergrondartikel (~600-1000 woorden) bij een
-    nieuwsitem uit de dagkrant. Vervangt de oude api_server.py /background-route.
+# ─── Optionele tool: generate_background ──────────────────────────────────────
+# Niet nodig voor Claude Max — Claude Desktop schrijft achtergrondartikelen
+# direct in het gesprek. Alleen registreren als de gebruiker het expliciet
+# aanzet én een ANTHROPIC_API_KEY beschikbaar is.
+if os.environ.get("NIEUWSSTATION_ENABLE_BACKGROUND_TOOL") == "1":
+    from .tools.background import generate_background as _generate_background
 
-    Vereist ANTHROPIC_API_KEY in de omgeving van de MCP-server.
-    Doet web-zoeken naar extra bronnen (DuckDuckGo), zoekt YouTube-context,
-    raadpleegt het vault-archief, en laat Claude Opus de analyse schrijven.
-    Duurt ~30-60s per artikel.
+    @mcp.tool()
+    def generate_background(
+        title: str,
+        summary: str = "",
+        sources: list[str] | None = None,
+        topic: str = "",
+    ) -> dict[str, Any]:
+        """Optioneel: genereer achtergrondartikel via aparte Anthropic API.
 
-    Returns: {html, archive_hits} bij succes, of {error} bij falen.
-    """
-    return _generate_background(
-        title=title, summary=summary, sources=sources or [], topic=topic
-    )
+        Alleen geregistreerd als NIEUWSSTATION_ENABLE_BACKGROUND_TOOL=1.
+        Vereist ANTHROPIC_API_KEY. Voor Claude Max-gebruikers: NIET nodig —
+        Claude Desktop schrijft de achtergrond zelf in het gesprek.
+        """
+        return _generate_background(
+            title=title, summary=summary, sources=sources or [], topic=topic
+        )
 
 
 def main() -> None:
