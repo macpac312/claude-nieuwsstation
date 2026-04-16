@@ -548,7 +548,7 @@ def main():
     print(f"[planner] Prompt: {len(prompt)} tekens, {len(index)} artikelen", flush=True)
 
     CLAUDE_TIMEOUT = 720  # 12 minuten per poging
-    CLAUDE_CMD = ["claude", "-p", prompt, "--model", "claude-sonnet-4-6",
+    CLAUDE_CMD = ["claude", "-p", prompt, "--model", "claude-opus-4-7",
                   "--dangerously-skip-permissions"]
 
     result = None

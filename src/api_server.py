@@ -66,7 +66,7 @@ _ARGOS  = _init_argos()
 
 DEFAULT_PORT = 7432
 CLAUDE_MODEL = "claude-sonnet-4-6"
-BACKGROUND_MODEL = "claude-opus-4-6"
+BACKGROUND_MODEL = "claude-opus-4-7"
 SOURCES_YAML = Path.home() / "nieuwsstation/src/config/sources.yaml"
 FOCUS_MD = Path.home() / "nieuwsstation/focus.md"
 TRANSLATE_CACHE_FILE = Path.home() / "nieuwsstation/.translate-cache.json"

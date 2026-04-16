@@ -1,6 +1,6 @@
 models:
   translation: claude-sonnet-4-6
-  analysis: claude-opus-4-6
+  analysis: claude-opus-4-7
   default: claude-sonnet-4-6
 guardian:
   enabled: true

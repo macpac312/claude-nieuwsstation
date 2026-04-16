@@ -66,7 +66,7 @@ gesloten wordt. Elke ▶ Achtergrond-knop in de dagkrant roept deze server aan.
 ## Model gebruik
 
 - **Fase A (data fetch)**: geen model (pure data)
-- **Fase B (dagkrant)**: Claude Opus 4.6 voor redactionele kwaliteit
+- **Fase B (dagkrant)**: Claude Opus 4.7 voor redactionele kwaliteit
 - **Fase C (achtergrond on-demand)**: Claude Sonnet 4.6 voor snelheid
 
 ## Podcast paper (optioneel)
