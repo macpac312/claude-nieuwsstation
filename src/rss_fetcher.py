@@ -119,14 +119,19 @@ def parse_feed(feed_url: str, source_name: str, source_type: str,
 
 def fetch_topics(topics: list[str] | None = None, hours: int = 24,
                  filter_keywords: bool = True,
-                 config_path: Path = CONFIG_PATH) -> dict:
+                 config_path: Path = CONFIG_PATH,
+                 section: str = "topics") -> dict:
     """Haal items op voor de opgegeven topics (of alle topics).
+
+    Args:
+        section: Top-level config-sleutel om feeds uit te lezen
+                 ('topics' voor briefings, 'dagkrant_topics' voor dagkrant).
 
     Returns:
         Dict met metadata en items per topic.
     """
     config = load_config(config_path)
-    all_topics = config.get("topics", {})
+    all_topics = config.get(section, {})
 
     if topics:
         selected = {t: all_topics[t] for t in topics if t in all_topics}
@@ -149,7 +154,10 @@ def fetch_topics(topics: list[str] | None = None, hours: int = 24,
         print(f"[INFO] Ophalen: {topic_name} ({len(topic_config.get('feeds', []))} feeds)...",
               file=sys.stderr)
 
-        keywords = topic_config.get("keywords", []) if filter_keywords else None
+        # Per-topic overrides (in sources.yaml)
+        topic_filter = topic_config.get("filter_keywords", filter_keywords)
+        keywords = topic_config.get("keywords", []) if topic_filter else None
+        topic_hours = topic_config.get("hours", hours)
         topic_items = []
 
         for feed in topic_config.get("feeds", []):
@@ -159,7 +167,7 @@ def fetch_topics(topics: list[str] | None = None, hours: int = 24,
                 source_name=feed["name"],
                 source_type=feed.get("type", "article"),
                 topic=topic_name,
-                max_age_hours=hours,
+                max_age_hours=topic_hours,
                 keywords=keywords,
             )
             topic_items.extend(items)
@@ -205,6 +213,8 @@ def main():
                         help="Output naar bestand (default: stdout)")
     parser.add_argument("--config", type=str,
                         help="Pad naar sources.yaml (default: src/config/sources.yaml)")
+    parser.add_argument("--section", type=str, default="topics",
+                        help="Config-sectie met feeds (default: 'topics', gebruik 'dagkrant_topics' voor dagkrant)")
 
     args = parser.parse_args()
 
@@ -224,6 +234,7 @@ def main():
         hours=args.hours,
         filter_keywords=not args.no_filter,
         config_path=config_path,
+        section=args.section,
     )
 
     output_json = json.dumps(results, ensure_ascii=False, indent=2)

@@ -6,3 +6,12 @@ dist/
 build/
 .venv/
 venv/
+
+# Cache & runtime
+.translate-cache.json
+logs/
+data/custom-topics.json
+
+# Persoonlijke planning/focus
+PLAN.md
+focus.md

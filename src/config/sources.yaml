@@ -1,132 +1,459 @@
+models:
+  translation: claude-sonnet-4-6
+  analysis: claude-opus-4-6
+  default: claude-sonnet-4-6
+guardian:
+  enabled: true
+  hours: 72
+  page_size: 4
+  topics:
+    regulatoir:
+    - banking regulation Europe
+    - European Central Bank Basel
+    - financial supervision eurozone
+    - CRR3 Basel IV capital requirements
+    - ECB monetary policy rate decision
+    financieel:
+    - European economy inflation
+    - Netherlands economy
+    - energy prices Europe economy
+    - ECB interest rate banks eurozone
+    - financial crisis banking sector Europe
+    huizenmarkt:
+    - Netherlands housing market
+    - Dutch property prices mortgage
+    - housing affordability Europe
+    wereld:
+    - Ukraine war Russia
+    - Iran Hormuz oil
+    - Middle East conflict
+    - US tariffs trade war Europe
+    tech:
+    - artificial intelligence regulation safety
+    - Claude Anthropic OpenAI frontier model
+    - AI competition Google DeepMind
+    sport:
+    - Formula 1 Verstappen
+    - chess tournament
+    - PSV Eindhoven football
+    - Eredivisie Dutch football
 topics:
   regulatoir:
-    icon: "📋"
-    color: "#89b4fa"
+    icon: 📋
+    color: '#89b4fa'
+    filter_keywords: false
+    hours: 168
     feeds:
-      - name: "EBA Publications"
-        url: "https://www.eba.europa.eu/news-press/news/rss.xml"
-        type: regulation
-      - name: "ECB Supervisory Blog"
-        url: "https://www.bankingsupervision.europa.eu/rss/press.html"
-        type: regulation
-      - name: "DNB Nieuwsberichten"
-        url: "https://www.dnb.nl/en/rss/16451/6882"
-        type: regulation
-      - name: "BIS Press Releases"
-        url: "https://www.bis.org/doclist/all_pressrels.rss"
-        type: regulation
+    - name: EBA Publications
+      url: https://www.eba.europa.eu/news-press/news/rss.xml
+      type: regulation
+    - name: ECB Supervisory Blog
+      url: https://www.bankingsupervision.europa.eu/rss/press.html
+      type: regulation
+    - name: ECB Press Releases
+      url: https://www.ecb.europa.eu/rss/press.html
+      type: regulation
+    - name: DNB Nieuwsberichten
+      url: https://www.dnb.nl/en/rss/16451/6882
+      type: regulation
+    - name: AFM Nieuws
+      url: https://www.afm.nl/rss
+      type: regulation
+    - name: BIS Press Releases
+      url: https://www.bis.org/doclist/all_pressrels.rss
+      type: regulation
+    - name: Politico EU
+      url: https://www.politico.eu/feed/
+      type: regulation
+    - name: ECB Blog
+      url: https://www.ecb.europa.eu/rss/blog.html
+      type: analysis
+    - name: VoxEU / CEPR
+      url: https://cepr.org/rss/vox-content
+      type: analysis
     keywords:
-      - IRB
-      - CRR
-      - LGD
-      - PD
-      - EGIM
-      - AVM
-      - credit risk
-      - model validation
-      - Basel
-
+    - IRB
+    - CRR
+    - LGD
+    - PD
+    - EGIM
+    - AVM
+    - credit risk
+    - model validation
+    - Basel
   huizenmarkt:
-    icon: "🏠"
-    color: "#a6e3a1"
+    icon: 🏠
+    color: '#a6e3a1'
     feeds:
-      - name: "CBS Nieuwsberichten"
-        url: "https://feeds.cbs.nl/nieuws"
-        type: data
-      - name: "NVM Woningmarkt"
-        url: "https://www.nvm.nl/rss"
-        type: article
-      - name: "Calcasa Nieuws"
-        url: "https://www.calcasa.nl/feed"
-        type: article
+    - name: NVM Woningmarkt
+      url: https://www.nvm.nl/rss
+      type: article
+    - name: Follow the Money
+      url: https://www.ftm.nl/feed/
+      type: article
     keywords:
-      - huizenprijzen
-      - woningmarkt
-      - hypotheek
-      - koopwoningen
-      - WOZ
-      - taxatie
-
+    - huizenprijzen
+    - woningmarkt
+    - hypotheek
+    - koopwoningen
+    - WOZ
+    - taxatie
   financieel:
-    icon: "📊"
-    color: "#fab387"
+    icon: 📊
+    color: '#fab387'
     feeds:
-      - name: "FD Headlines"
-        url: "https://fd.nl/rss"
-        type: article
-      - name: "NRC Economie"
-        url: "https://www.nrc.nl/sectie/economie/rss/"
-        type: article
+    - name: FD Headlines
+      url: https://fd.nl/rss
+      type: article
+    - name: NRC Economie
+      url: https://www.nrc.nl/sectie/economie/rss/
+      type: article
+    - name: Financial Times
+      url: https://www.ft.com/world?format=rss
+      type: article
+    - name: Follow the Money
+      url: https://www.ftm.nl/feed/
+      type: article
+    - name: VoxEU / CEPR
+      url: https://cepr.org/rss/vox-content
+      type: analysis
     keywords:
-      - rente
-      - ECB
-      - Rabobank
-      - banken
-      - kapitaal
-
+    - rente
+    - ECB
+    - Rabobank
+    - banken
+    - kapitaal
   tech:
-    icon: "⚡"
-    color: "#cba6f7"
+    icon: ⚡
+    color: '#cba6f7'
     feeds:
-      - name: "The Verge AI"
-        url: "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml"
-        type: article
-      - name: "Anthropic Blog"
-        url: "https://www.anthropic.com/rss"
-        type: article
-      - name: "Hacker News Best"
-        url: "https://hnrss.org/best"
-        type: article
+    - name: The Verge AI
+      url: https://www.theverge.com/rss/ai-artificial-intelligence/index.xml
+      type: article
+    - name: Simon Willison
+      url: https://simonwillison.net/atom/everything/
+      type: analysis
+    - name: Ars Technica AI
+      url: https://arstechnica.com/tag/ai/feed/
+      type: article
+    - name: Hacker News Best
+      url: https://hnrss.org/best
+      type: article
+    - name: HN Claude/Anthropic
+      url: https://hnrss.org/newest?q=anthropic+claude
+      type: article
     keywords:
-      - Claude
-      - LLM
-      - AI
-      - machine learning
-      - GPT
-      - Gemini
-
+    - Claude
+    - LLM
+    - AI
+    - machine learning
+    - GPT
+    - Gemini
+    - Anthropic
   sport:
-    icon: "⚽"
-    color: "#a6e3a1"
+    icon: ⚽
+    color: '#a6e3a1'
     feeds:
-      - name: "NOS Sport"
-        url: "https://feeds.nos.nl/nossport"
-        type: article
-      - name: "Motorsport F1"
-        url: "https://www.motorsport.com/rss/f1/news/"
-        type: article
-      - name: "Chess.com News"
-        url: "https://www.chess.com/rss/news"
-        type: article
+    - name: NOS Sport
+      url: https://feeds.nos.nl/nossport
+      type: article
+    - name: Motorsport F1
+      url: https://www.motorsport.com/rss/f1/news/
+      type: article
+    - name: Chess.com News
+      url: https://www.chess.com/rss/news
+      type: article
     keywords:
-      - F1
-      - Verstappen
-      - Eredivisie
-      - schaken
-      - chess
-
+    - F1
+    - Verstappen
+    - Eredivisie
+    - schaken
+    - chess
   ai_nieuws:
-    icon: "🤖"
-    color: "#cba6f7"
+    icon: 🤖
+    color: '#cba6f7'
     feeds:
-      - name: "Anthropic Blog"
-        url: "https://www.anthropic.com/rss"
-        type: article
-      - name: "OpenAI Blog"
-        url: "https://openai.com/blog/rss.xml"
-        type: article
-      - name: "Hugging Face Blog"
-        url: "https://huggingface.co/blog/feed.xml"
-        type: article
-      - name: "arXiv AI (cs.AI)"
-        url: "https://rss.arxiv.org/rss/cs.AI"
-        type: paper
+    - name: OpenAI Blog
+      url: https://openai.com/blog/rss.xml
+      type: article
+    - name: Google DeepMind
+      url: https://deepmind.google/blog/rss.xml
+      type: article
+    - name: Hugging Face Blog
+      url: https://huggingface.co/blog/feed.xml
+      type: article
+    - name: Nathan Lambert (Interconnects)
+      url: https://www.interconnects.ai/feed
+      type: analysis
+    - name: Last Week in AI
+      url: https://www.lastweekinai.com/feed.xml
+      type: article
+    - name: Jack Clark (Import AI)
+      url: https://jack-clark.net/feed/
+      type: analysis
+    - name: arXiv AI (cs.AI)
+      url: https://rss.arxiv.org/rss/cs.AI
+      type: paper
     keywords:
-      - LLM
-      - transformer
-      - RLHF
-      - agents
-      - MCP
-      - Claude
-      - GPT
-      - open source
+    - LLM
+    - transformer
+    - RLHF
+    - agents
+    - MCP
+    - Claude
+    - GPT
+    - Anthropic
+    - open source
+    - frontier model
+dagkrant_topics:
+  nederland:
+    icon: 🇳🇱
+    color: '#ea580c'
+    label: Nederland
+    feeds:
+    - name: NOS Algemeen
+      url: https://feeds.nos.nl/nosnieuwsalgemeen
+      type: article
+    - name: NRC Binnenland
+      url: https://www.nrc.nl/sectie/binnenland/rss/
+      type: article
+    - name: Volkskrant Homepage
+      url: https://www.volkskrant.nl/rss.xml
+      type: article
+    - name: Volkskrant Politiek
+      url: https://www.volkskrant.nl/politiek/rss.xml
+      type: article
+    - name: NU.nl Algemeen
+      url: https://www.nu.nl/rss/Algemeen
+      type: article
+    - name: RTL Nieuws
+      url: https://www.rtlnieuws.nl/rss.xml
+      type: article
+    - name: FTM
+      url: https://www.ftm.nl/feed
+      type: article
+    keywords:
+    - Nederland
+    - kabinet
+    - Tweede Kamer
+    - politiek
+  wereld:
+    icon: 🌍
+    color: '#2563eb'
+    label: Wereld
+    feeds:
+    - name: NOS Buitenland
+      url: https://feeds.nos.nl/nosnieuwsbuitenland
+      type: article
+    - name: NRC Buitenland
+      url: https://www.nrc.nl/sectie/buitenland/rss/
+      type: article
+    - name: NU.nl Buitenland
+      url: https://www.nu.nl/rss/Buitenland
+      type: article
+    - name: Volkskrant Topverhalen
+      url: https://www.volkskrant.nl/nieuws-achtergrond/rss.xml
+      type: article
+    - name: Al Jazeera
+      url: https://www.aljazeera.com/xml/rss/all.xml
+      type: article
+    - name: BBC World
+      url: https://feeds.bbci.co.uk/news/world/rss.xml
+      type: article
+    - name: NPR World
+      url: https://feeds.npr.org/1004/rss.xml
+      type: article
+    keywords:
+    - oorlog
+    - conflict
+    - internationaal
+  financieel_dk:
+    icon: 📊
+    color: '#d97706'
+    label: Financieel
+    feeds:
+    - name: FD Headlines
+      url: https://fd.nl/rss
+      type: article
+    - name: NRC Economie
+      url: https://www.nrc.nl/sectie/economie/rss/
+      type: article
+    - name: Volkskrant Economie
+      url: https://www.volkskrant.nl/economie/rss.xml
+      type: article
+    - name: CNBC Top News
+      url: https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114
+      type: article
+    - name: Follow the Money
+      url: https://www.ftm.nl/feed/
+      type: article
+    - name: VoxEU / CEPR
+      url: https://cepr.org/rss/vox-content
+      type: analysis
+    keywords:
+    - beurs
+    - economie
+    - markten
+    - rente
+    - banken
+    - financieel toezicht
+  sport_dk:
+    icon: 🏅
+    color: '#16a34a'
+    label: Sport
+    feeds:
+    - name: NOS Sport
+      url: https://feeds.nos.nl/nossport
+      type: article
+    - name: NRC Sport
+      url: https://www.nrc.nl/sectie/sport/rss/
+      type: article
+    - name: Motorsport F1
+      url: https://www.motorsport.com/rss/f1/news/
+      type: article
+    keywords:
+    - F1
+    - Verstappen
+    - schaatsen
+    - wielrennen
+    - tennis
+  voetbal_dk:
+    icon: ⚽
+    color: '#15803d'
+    label: Voetbal
+    feeds:
+    - name: NOS Sport
+      url: https://feeds.nos.nl/nossport
+      type: article
+    - name: Voetbal International
+      url: https://www.vi.nl/rss/nieuws
+      type: article
+    - name: FCUpdate
+      url: https://fcupdate.nl/rss/
+      type: article
+    - name: ESPN.nl Voetbal
+      url: https://www.espn.nl/rss/voetbal
+      type: article
+    keywords:
+    - PSV
+    - Eredivisie
+    - Nederlands elftal
+    - Champions League
+    - Europa League
+    - Conference League
+    - UEFA
+    - voetbal
+    - Oranje
+    - Ajax
+    - Feyenoord
+  ai_tech:
+    icon: 🤖
+    color: '#7c3aed'
+    label: AI & Tech
+    feeds:
+    - name: The Verge AI
+      url: https://www.theverge.com/rss/ai-artificial-intelligence/index.xml
+      type: article
+    - name: TechCrunch AI
+      url: https://techcrunch.com/category/artificial-intelligence/feed/
+      type: article
+    - name: Simon Willison
+      url: https://simonwillison.net/atom/everything/
+      type: analysis
+    - name: Nathan Lambert (Interconnects)
+      url: https://www.interconnects.ai/feed
+      type: analysis
+    - name: Ars Technica AI
+      url: https://arstechnica.com/tag/ai/feed/
+      type: article
+    - name: 404 Media
+      url: https://www.404media.co/rss/
+      type: article
+    - name: Google DeepMind
+      url: https://deepmind.google/blog/rss.xml
+      type: article
+    - name: OpenAI Blog
+      url: https://openai.com/blog/rss.xml
+      type: article
+    - name: HN Claude/Anthropic
+      url: https://hnrss.org/newest?q=anthropic+claude
+      type: article
+    keywords:
+    - AI
+    - Claude
+    - Anthropic
+    - GPT
+    - LLM
+    - tech
+    - frontier model
+  Sport:
+    icon: 📌
+    color: '#94e2d5'
+    feeds:
+    - name: https://racingnews365.nl
+      url: https://racingnews365.com/feed/news.xml
+      type: article
+    keywords: []
+  regulatoir_dk:
+    icon: 📋
+    color: '#89b4fa'
+    label: Regulatoir
+    filter_keywords: false
+    hours: 168
+    feeds:
+    - name: EBA Publications
+      url: https://www.eba.europa.eu/news-press/news/rss.xml
+      type: regulation
+    - name: ECB Supervisory Blog
+      url: https://www.bankingsupervision.europa.eu/rss/press.html
+      type: regulation
+    - name: ECB Press Releases
+      url: https://www.ecb.europa.eu/rss/press.html
+      type: regulation
+    - name: DNB Nieuwsberichten
+      url: https://www.dnb.nl/en/rss/16451/6882
+      type: regulation
+    - name: AFM Nieuws
+      url: https://www.afm.nl/rss
+      type: regulation
+    - name: BIS Press Releases
+      url: https://www.bis.org/doclist/all_pressrels.rss
+      type: regulation
+    - name: ECB Blog
+      url: https://www.ecb.europa.eu/rss/blog.html
+      type: analysis
+    - name: VoxEU / CEPR
+      url: https://cepr.org/rss/vox-content
+      type: analysis
+    keywords:
+    - IRB
+    - CRR
+    - LGD
+    - PD
+    - EGIM
+    - AVM
+    - credit risk
+    - model validation
+    - Basel
+  huizenmarkt_dk:
+    icon: 🏠
+    color: '#a6e3a1'
+    label: Huizenmarkt
+    hours: 168
+    feeds:
+    - name: NVM Woningmarkt
+      url: https://www.nvm.nl/rss
+      type: article
+    - name: Follow the Money
+      url: https://www.ftm.nl/feed/
+      type: article
+    keywords:
+    - huizenprijzen
+    - woningmarkt
+    - hypotheek
+    - koopwoningen
+    - WOZ
+    - taxatie
+    - AVM
+    - woningcrisis
+    - bouwproductie

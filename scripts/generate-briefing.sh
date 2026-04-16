@@ -10,11 +10,13 @@ mkdir -p "$TMPDIR"
 
 TOPICS_ARG=""
 HOURS=24
+MODEL_ARG=""
 
 while [[ $# -gt 0 ]]; do
   case $1 in
     --topics) TOPICS_ARG="--topics $2"; shift 2 ;;
     --hours) HOURS="$2"; shift 2 ;;
+    --model) MODEL_ARG="--model $2"; shift 2 ;;
     *) shift ;;
   esac
 done
@@ -27,7 +29,7 @@ python3 "$DIR/src/rss_fetcher.py" ${TOPICS_ARG:---all} --hours "$HOURS" --no-fil
 
 # Stap 2: Vertalen
 echo "  [2/4] Artikelen vertalen..."
-python3 "$DIR/src/translator.py" --input "$TMPDIR/rss.json" --output "$TMPDIR/rss_nl.json" --claude "$CLAUDE" 2>&1 | grep -E '^\[OK|^\[INFO'
+python3 "$DIR/src/translator.py" --input "$TMPDIR/rss.json" --output "$TMPDIR/rss_nl.json" --claude "$CLAUDE" ${MODEL_ARG} 2>&1 | grep -E '^\[OK|^\[INFO'
 
 # Stap 3: Vault doorzoeken
 echo "  [3/4] Vault doorzoeken..."
