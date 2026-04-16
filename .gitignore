@@ -15,3 +15,7 @@ data/custom-topics.json
 # Persoonlijke planning/focus
 PLAN.md
 focus.md
+
+# Obsidian plugin build output
+obsidian-plugin/node_modules/
+obsidian-plugin/main.js

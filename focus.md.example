@@ -1,0 +1,23 @@
+# Nieuwsstation — Actieve Focus
+
+Bewerk dit bestand om te bepalen welke onderwerpen het systeem actief volgt.
+Bij elke dagkrant-run worden deze termen gebruikt als extra zoekwoorden
+voor vault_search én als queries voor de Guardian API.
+
+Kopieer dit bestand naar `focus.md` en pas het aan.
+
+---
+
+## Lopende verhalen
+
+- Onderwerp 1: trefwoord1, trefwoord2, trefwoord3
+- Onderwerp 2: trefwoord1, trefwoord2
+
+## Vaste aandachtsgebieden
+
+- Technologie: AI, Claude, Anthropic
+- Financieel: rente, inflatie, ECB
+
+## Niet actief volgen (uitcommentariëren met #)
+
+# - Oud verhaal: ...
