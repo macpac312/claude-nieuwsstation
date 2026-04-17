@@ -405,16 +405,20 @@ def render_kruisverband(plan: dict) -> str:
     import json as _json
     topnieuws_data = []
     for t in (plan.get("topnieuws", [])[:6]):
+        sectie = t.get("tag_label", "") or t.get("tag", "")
         topnieuws_data.append({
             "titel": t.get("titel", ""),
-            "sectie": t.get("tag_label", "") or t.get("tag", ""),
+            "sectie": sectie,
+            "article_id": sectie.lower().replace(" ", "-") or "dagkrant",
         })
     # Hero ook meenemen
     hero_obj = plan.get("hero", {})
     if hero_obj.get("titel"):
+        hero_sectie = hero_obj.get("tag_label", "") or hero_obj.get("tag", "Hero")
         topnieuws_data.insert(0, {
             "titel": hero_obj.get("titel", ""),
-            "sectie": hero_obj.get("tag_label", "") or hero_obj.get("tag", "Hero"),
+            "sectie": hero_sectie,
+            "article_id": hero_sectie.lower().replace(" ", "-") or "hero",
         })
     datum_iso = plan.get("datum_iso", "")
     payload = _json.dumps({

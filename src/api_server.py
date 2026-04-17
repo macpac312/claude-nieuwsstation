@@ -74,6 +74,9 @@ TRANSLATE_CACHE_FILE = Path.home() / "nieuwsstation/.translate-cache.json"
 # In-memory cache: title_key → generated html
 CACHE: dict[str, str] = {}
 
+# Kruisverband Q&A context cache: datum_iso → {kruisverband_md, archief, werk, graph}
+KV_CONTEXT_CACHE: dict[str, dict] = {}
+
 # Persistente vertaalcache (overleeft server-herstart)
 def _load_translate_cache() -> dict[str, str]:
     try:
@@ -145,6 +148,40 @@ def _search_vault_archive(query: str, max_snippets: int = 4) -> str:
         return block
     except Exception as e:
         print(f"  [API] Archief zoeken mislukt: {e}", file=sys.stderr)
+        return ""
+
+
+def _search_vault_werk(query: str, max_snippets: int = 3) -> str:
+    """Doorzoek de werk-vault (Calcasa, IRB, huizenprijzen) — slaat dagkrant-digests over."""
+    if not VAULT_SEARCH.exists():
+        return ""
+    try:
+        result = subprocess.run(
+            ["python3", str(VAULT_SEARCH), "--query", query,
+             "--top", str(max_snippets + 4), "--min-score", "1.0",
+             "--vault", str(VAULT_PATH)],
+            capture_output=True, text=True, timeout=10,
+            stdin=subprocess.DEVNULL,
+        )
+        if result.returncode != 0 or not result.stdout.strip():
+            return ""
+        data = json.loads(result.stdout)
+        notes = data.get("notes", [])
+        parts = []
+        for note in notes:
+            title = note.get("title", "")
+            if "dagkrant" in title.lower() or re.match(r"^\d{4}-\d{2}-\d{2}", title):
+                continue
+            snippet = note.get("excerpt", note.get("content", ""))[:350]
+            parts.append(f"[Vault: {title}]\n{snippet}")
+            if len(parts) >= max_snippets:
+                break
+        block = "\n\n".join(parts)
+        if block:
+            print(f"  [API] Werk-vault: {len(parts)} notes voor '{query[:40]}'", file=sys.stderr)
+        return block
+    except Exception as e:
+        print(f"  [API] Werk-vault zoeken mislukt: {e}", file=sys.stderr)
         return ""
 
 
@@ -966,7 +1003,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         if self.path not in ("/background", "/article", "/translate",
                              "/notebooklm", "/generate-podcast", "/save-note",
-                             "/kruisverband-visual"):
+                             "/kruisverband-visual", "/kruisverband-chat"):
             self.send_json(404, {"error": "Not found"})
             return
 
@@ -1316,6 +1353,10 @@ Sla op als plain tekst, geen code blocks."""
 
         # ── /kruisverband-visual ──────────────────────────────────────────
         if self.path == "/kruisverband-visual":
+            import uuid as _uuid2
+            import json as _json2
+            import concurrent.futures as _cf
+
             kv_md = (body.get("kruisverband_md") or "").strip()
             topnieuws = body.get("topnieuws") or []
             datum_iso = (body.get("datum_iso") or "").strip()
@@ -1329,54 +1370,77 @@ Sla op als plain tekst, geen code blocks."""
                 self.send_json(200, {"visual_html": CACHE[cache_key], "cached": True})
                 return
 
+            uid = _uuid2.uuid4().hex[:8]
+
+            # ── Vault searches parallel ───────────────────────────────────
+            top_themas = " ".join(str(t.get("titel", ""))[:40] for t in topnieuws[:3])
+            archief_query = kv_md[:200] + " " + top_themas
+
+            def _get_archief():
+                return _search_vault_archive(archief_query, max_snippets=5)
+            def _get_werk():
+                return _search_vault_werk(
+                    "IRB AVM Rabobank hypotheek rente model Basel credit risk validatie",
+                    max_snippets=3)
+
+            with _cf.ThreadPoolExecutor(max_workers=2) as pool:
+                f_arch = pool.submit(_get_archief)
+                f_werk = pool.submit(_get_werk)
+                archief_block = f_arch.result()
+                werk_block = f_werk.result()
+
+            # ── Topnieuws voor prompt ─────────────────────────────────────
             top_lines = []
-            for t in topnieuws[:7]:
+            for t in topnieuws[:8]:
                 titel = str(t.get("titel", ""))[:90]
                 sectie = str(t.get("sectie", ""))[:20]
                 if titel:
                     top_lines.append(f"- [{sectie}] {titel}")
             top_block = "\n".join(top_lines) if top_lines else "(geen top-artikelen)"
 
-            # Claude levert ALLEEN JSON-data — D3-code zit in de template
-            kv_prompt = f"""Analyseer onderstaande kruisverband-tekst en top-artikelen van de dagkrant.
-Geef UITSLUITEND een JSON-object terug met nodes en links voor een interactief verbanden-diagram.
+            archief_section = (f"\n\nARCHIEF — EERDERE DAGKRANTEN (gebruik voor historische context):\n{archief_block}"
+                               if archief_block else "")
+            werk_section = (f"\n\nVAULT — WERK-CONTEXT (Rabobank/IRB/AVM notities):\n{werk_block}"
+                            if werk_block else "")
 
-KRUISVERBAND-ANALYSE:
-{kv_md[:2500]}
+            kv_prompt = f"""Je maakt een uitgebreide kruisverband-analyse voor Marc van Marrewijk.
+Marc werkt als model validator bij Rabobank Utrecht (IRB/credit risk: CRR3, EBA, ECB EGIM, PD/LGD/CCF, Calcasa AVM).
+Interesses: AI/Claude, Formule 1 (Verstappen), schaken, huizenmarkt Nederland.
+
+KRUISVERBAND-ANALYSE VAN VANDAAG ({datum_iso}):
+{kv_md[:3000]}
 
 TOP-ARTIKELEN:
 {top_block}
+{archief_section}
+{werk_section}
+
+Geef UITSLUITEND dit JSON-object (geen uitleg, geen markdown):
+
+{{"rode_draad":"2-3 zinnen die de verbindende lijn van vandaag samenvatten","persoonlijke_duiding":"1-2 zinnen specifiek voor Marc: wat betekent dit voor zijn werk bij Rabobank of IRB-validatie","nodes":[{{"id":"lowercase-geen-spaties","label":"Max 3 woorden","group":"nederland|wereld|financieel|regulatoir|huizenmarkt|sport|aitech","desc":"Max 25 woorden wat dit thema vandaag betekent","weight":3,"relevance":["rabobank|irb|avm|ai|persoonlijk"],"articles":["sectie-scroll-id"],"history":["YYYY-MM-DD: korte eerdere verschijning uit archief"]}}],"links":[{{"source":"node-id","target":"node-id","label":"Max 3 woorden","strength":3,"directed":true,"history":"optioneel: hoe lang dit verband zichtbaar is"}}],"timeline":[{{"datum":"YYYY-MM-DD","thema_id":"node-id","event":"Korte beschrijving","digest":"YYYY-MM-DD-dagkrant"}}]}}
 
 REGELS:
-- 5-8 nodes: de belangrijkste thema's/actoren van vandaag
-- 5-10 links: de verbanden tussen die thema's
-- node.id: lowercase, geen spaties, uniek (bijv. "ecb-rente", "huizenprijzen")
-- node.label: max 3 woorden, begrijpelijk als knooppunt-label
-- node.group: één van: nederland, wereld, financieel, regulatoir, huizenmarkt, sport, aitech, default
-- node.desc: max 20 woorden — wat dit thema vandaag betekent
-- link.label: max 3 woorden — hoe source het target beïnvloedt (bijv. "verhoogt druk op", "versnelt", "blokkeert")
-- link.directed: true als causaliteit duidelijk is, false bij tweerichting/correlatie
-- Kies thema's die écht in verbinding staan — geen losse nodes zonder links
-
-FORMAAT — alleen dit JSON, geen uitleg, geen markdown:
-{{"nodes":[{{"id":"voorbeeld","label":"Voorbeeld thema","group":"financieel","desc":"Beschrijving van de rol vandaag"}}],"links":[{{"source":"id1","target":"id2","label":"beïnvloedt","directed":true}}]}}"""
+- 5-8 nodes, 5-10 links — alleen echte verbanden van vandaag
+- weight 1-5: belang van dit thema vandaag (5=dominant)
+- strength 1-5: kracht van het verband (5=directe causaliteit, 1=zwakke correlatie)
+- relevance: lege array [] als niet relevant voor werk of interesses
+- articles: gebruik de sectie-ID als scroll-target (bijv. "nederland", "financieel", "aitech", "regulatoir", "huizenmarkt")
+- history/timeline: vul in vanuit het archief — lege array als geen historische data beschikbaar
+- timeline digests: gebruik formaat "YYYY-MM-DD-dagkrant" als de datum bekend is uit het archief"""
 
             try:
-                import uuid as _uuid2
-                import json as _json2
-                uid = _uuid2.uuid4().hex[:8]
-
                 t0 = time.time()
-                print(f"  [API] Kruisverband D3-data genereren…", file=sys.stderr)
+                print(f"  [API] Kruisverband analyse (archief:{bool(archief_block)}, werk:{bool(werk_block)})…",
+                      file=sys.stderr)
                 result = subprocess.run(
                     ["claude", "-p", kv_prompt, "--model", BACKGROUND_MODEL,
                      "--dangerously-skip-permissions"],
-                    capture_output=True, text=True, timeout=90,
+                    capture_output=True, text=True, timeout=150,
                     stdin=subprocess.DEVNULL,
                     cwd=str(Path.home() / "nieuwsstation"),
                 )
                 elapsed = time.time() - t0
-                print(f"  [API] D3-data klaar in {elapsed:.0f}s (code {result.returncode})", file=sys.stderr)
+                print(f"  [API] Kruisverband klaar in {elapsed:.0f}s", file=sys.stderr)
 
                 if result.returncode != 0:
                     self.send_json(500, {"error": result.stderr[:300] or "Claude mislukt"})
@@ -1388,36 +1452,154 @@ FORMAAT — alleen dit JSON, geen uitleg, geen markdown:
                 if raw.endswith("```"): raw = raw[:-3]
                 raw = raw.strip()
 
-                # Extraheer JSON
                 m = re.search(r'\{[\s\S]+\}', raw)
                 if not m:
                     self.send_json(500, {"error": "Geen JSON in response"})
                     return
-                graph = _json2.loads(m.group(0))
-                nodes_json = _json2.dumps(graph.get("nodes", []), ensure_ascii=False)
-                links_json = _json2.dumps(graph.get("links", []), ensure_ascii=False)
 
-                # D3 force-graph template — volledig self-contained
-                visual = f"""<div class="ns-viz">
-<div class="ns-viz-title">🕸 Verbanden van vandaag — klik of sleep knooppunten</div>
+                graph = _json2.loads(m.group(0))
+
+                # Sla context op voor Q&A
+                KV_CONTEXT_CACHE[datum_iso or "latest"] = {
+                    "kruisverband_md": kv_md,
+                    "archief": archief_block,
+                    "werk": werk_block,
+                    "graph": graph,
+                    "datum_iso": datum_iso,
+                }
+
+                nodes_json  = _json2.dumps(graph.get("nodes", []),    ensure_ascii=False)
+                links_json  = _json2.dumps(graph.get("links", []),    ensure_ascii=False)
+                tl_json     = _json2.dumps(graph.get("timeline", []), ensure_ascii=False)
+                rode_draad  = _json2.dumps(graph.get("rode_draad", ""),           ensure_ascii=False)
+                pers_duiding = _json2.dumps(graph.get("persoonlijke_duiding", ""), ensure_ascii=False)
+
+                # Relevantie-badges
+                all_rel: set = set()
+                for n in graph.get("nodes", []):
+                    for r in (n.get("relevance") or []):
+                        all_rel.add(r)
+                badges = ""
+                if all_rel & {"rabobank", "irb", "avm"}:
+                    badges += '<span class="kv-badge kv-badge-werk">💼 Rabobank-relevant</span>'
+                if "ai" in all_rel:
+                    badges += '<span class="kv-badge kv-badge-ai">🤖 AI-relevant</span>'
+                if "persoonlijk" in all_rel:
+                    badges += '<span class="kv-badge kv-badge-pers">⭐ Persoonlijk</span>'
+
+                visual = f"""<style>
+.kv-container{{font-family:inherit;margin:.3rem 0}}
+.kv-rode-draad{{display:flex;gap:.8rem;align-items:flex-start;background:var(--card,#1e1e2e);border-radius:10px;padding:.75rem 1rem;margin-bottom:.65rem;border-left:4px solid #ef4444}}
+.kv-rd-label{{font-size:.68rem;font-weight:700;color:#ef4444;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:.2rem}}
+.kv-rd-text{{margin:0;font-size:.86rem;color:var(--t1,#e2e8f0);line-height:1.5}}
+.kv-duiding{{background:var(--card,#1e1e2e);border-radius:10px;padding:.65rem 1rem;margin-bottom:.65rem;border-left:4px solid #f59e0b}}
+.kv-duiding-badges{{display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:.35rem}}
+.kv-badge{{font-size:.68rem;padding:2px 8px;border-radius:12px;font-weight:600}}
+.kv-badge-werk{{background:#f59e0b22;color:#f59e0b;border:1px solid #f59e0b55}}
+.kv-badge-ai{{background:#a855f722;color:#a855f7;border:1px solid #a855f755}}
+.kv-badge-pers{{background:#06b6d422;color:#06b6d4;border:1px solid #06b6d455}}
+.kv-duiding-text{{margin:0;font-size:.83rem;color:var(--t2,#94a3b8);line-height:1.5}}
+.kv-filters{{display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:.5rem}}
+.kv-filter{{font-size:.7rem;padding:3px 10px;border-radius:20px;border:1px solid var(--border,#334155);background:transparent;color:var(--t2,#94a3b8);cursor:pointer;transition:all .15s}}
+.kv-filter:hover,.kv-filter-active{{border-color:var(--accent,#3b82f6);color:var(--accent,#3b82f6);background:rgba(59,130,246,.08)}}
+.kv-filter-active{{font-weight:600}}
+.kv-tl-wrap{{margin:.5rem 0 .3rem}}
+.kv-tl-title{{font-size:.68rem;font-weight:700;color:var(--t3,#64748b);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.35rem}}
+.kv-tl-events{{display:flex;flex-direction:column;gap:.22rem}}
+.kv-tl-event{{display:flex;align-items:baseline;gap:.5rem;font-size:.76rem}}
+.kv-tl-dot{{width:7px;height:7px;border-radius:50%;flex-shrink:0;display:inline-block;margin-bottom:-1px}}
+.kv-tl-date{{color:var(--t3,#64748b);font-size:.7rem;flex-shrink:0;min-width:2.8rem;font-variant-numeric:tabular-nums}}
+.kv-tl-evt{{color:var(--t2,#94a3b8);flex:1}}
+.kv-tl-link{{color:var(--accent,#3b82f6);text-decoration:none;font-size:.7rem;margin-left:.2rem}}
+.kv-chat{{margin-top:.7rem;border:1px solid var(--border,#334155);border-radius:10px;overflow:hidden}}
+.kv-chat-toggle{{width:100%;text-align:left;padding:.55rem 1rem;background:var(--card,#1e1e2e);border:none;cursor:pointer;color:var(--t1,#e2e8f0);font-size:.83rem;display:flex;justify-content:space-between;align-items:center}}
+.kv-chat-toggle:hover{{background:var(--card2,#26263a)}}
+.kv-chat-arr{{font-size:.7rem;color:var(--t3,#64748b)}}
+.kv-chat-body{{padding:.7rem 1rem;background:var(--card,#1e1e2e);border-top:1px solid var(--border,#334155)}}
+.kv-quick-btns{{display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:.55rem}}
+.kv-quick-btns button{{font-size:.7rem;padding:3px 9px;border-radius:20px;border:1px solid var(--border,#334155);background:transparent;color:var(--t2,#94a3b8);cursor:pointer;transition:all .15s}}
+.kv-quick-btns button:hover{{border-color:var(--accent,#3b82f6);color:var(--accent,#3b82f6)}}
+.kv-ask-row{{display:flex;gap:.35rem;margin-bottom:.5rem}}
+.kv-input{{flex:1;padding:.38rem .65rem;border-radius:6px;border:1px solid var(--border,#334155);background:var(--bg,#0f1117);color:var(--t1,#e2e8f0);font-size:.8rem}}
+.kv-ask-btn{{padding:.38rem .75rem;border-radius:6px;border:none;background:var(--accent,#3b82f6);color:#fff;cursor:pointer;font-size:.8rem;font-weight:600;white-space:nowrap}}
+.kv-ask-btn:hover{{opacity:.85}}
+.kv-answer{{font-size:.82rem;line-height:1.55}}
+.kv-answer-text{{color:var(--t1,#e2e8f0);padding:.4rem 0;white-space:pre-wrap}}
+.kv-loading{{color:var(--t3,#64748b);font-style:italic;padding:.35rem 0}}
+.kv-error{{color:#ef4444;font-size:.78rem;padding:.35rem 0}}
+</style>
+<div class="kv-container">
+<div class="kv-rode-draad">
+  <div>
+    <span class="kv-rd-label">🔴 Rode draad</span>
+    <p class="kv-rd-text" id="kv-rd-{uid}"></p>
+  </div>
+</div>
+<div class="kv-duiding" id="kv-duiding-{uid}">
+  <div class="kv-duiding-badges">{badges}</div>
+  <p class="kv-duiding-text" id="kv-pd-{uid}"></p>
+</div>
+<div class="kv-filters" id="kv-filters-{uid}">
+  <button class="kv-filter kv-filter-active" data-filter="all">Alles</button>
+  <button class="kv-filter" data-filter="rabobank">💼 Werk</button>
+  <button class="kv-filter" data-filter="ai">🤖 AI</button>
+  <button class="kv-filter" data-filter="financieel">📊 Financieel</button>
+  <button class="kv-filter" data-filter="wereld">🌍 Wereld</button>
+  <button class="kv-filter" data-filter="nederland">🇳🇱 NL</button>
+</div>
 <div class="ns-viz-d3" id="kv-wrap-{uid}">
   <svg id="kv-svg-{uid}"></svg>
   <div class="ns-viz-d3-tooltip" id="kv-tip-{uid}"></div>
 </div>
+<div class="kv-tl-wrap" id="kv-tl-{uid}"></div>
+<div class="kv-chat" id="kv-chat-{uid}">
+  <button class="kv-chat-toggle" onclick="(function(){{var b=document.getElementById('kv-cbody-{uid}');var a=document.querySelector('#kv-chat-{uid} .kv-chat-arr');if(b.style.display==='none'){{b.style.display='block';if(a)a.textContent='▴';}}else{{b.style.display='none';if(a)a.textContent='▾';}}}})()">
+    💬 Vraag Claude over deze verbanden <span class="kv-chat-arr">▾</span>
+  </button>
+  <div class="kv-chat-body" id="kv-cbody-{uid}" style="display:none">
+    <div class="kv-quick-btns">
+      <button onclick="kvAsk_{uid}('Wat betekent dit voor mijn werk bij Rabobank en IRB-validatie?')">💼 Rabobank-impact</button>
+      <button onclick="kvAsk_{uid}('Hoe heeft dit thema zich de afgelopen weken ontwikkeld?')">📅 Historisch</button>
+      <button onclick="kvAsk_{uid}('Wat zijn de IRB- en regulatoire implicaties van vandaag?')">📋 Regulatoir</button>
+      <button onclick="kvAsk_{uid}('Wat is de samenhang tussen het AI-nieuws en de andere verbanden?')">🤖 AI-samenhang</button>
+    </div>
+    <div class="kv-ask-row">
+      <input type="text" id="kv-inp-{uid}" class="kv-input" placeholder="Stel een vraag over de verbanden van vandaag..."
+             onkeydown="if(event.key==='Enter')kvAsk_{uid}(this.value)">
+      <button class="kv-ask-btn" onclick="kvAsk_{uid}(document.getElementById('kv-inp-{uid}').value)">Vraag →</button>
+    </div>
+    <div class="kv-answer" id="kv-ans-{uid}"></div>
+  </div>
+</div>
+</div>
 <script>(function(){{
+  var rd=document.getElementById('kv-rd-{uid}');
+  var pd=document.getElementById('kv-pd-{uid}');
+  if(rd)rd.textContent={rode_draad};
+  if(pd)pd.textContent={pers_duiding};
+
   if(typeof d3==='undefined'){{
-    document.getElementById('kv-wrap-{uid}').innerHTML='<p style="padding:1rem;color:var(--t3)">D3.js niet geladen — herlaad de pagina.</p>';
+    document.getElementById('kv-wrap-{uid}').innerHTML='<p style="padding:1rem;color:var(--t3)">D3.js niet geladen.</p>';
     return;
   }}
   var nodes={nodes_json};
   var links={links_json};
-  // Kleurmap per sectie
+  var timeline={tl_json};
   var cm={{'nederland':'#ea580c','wereld':'#2563eb','financieel':'#d97706',
            'regulatoir':'#3b5bdb','huizenmarkt':'#2f9e44','sport':'#16a34a',
-           'aitech':'#7c3aed','ai':'#7c3aed','tech':'#7c3aed','default':'#7c3aed'}};
+           'aitech':'#7c3aed','ai':'#7c3aed','tech':'#7c3aed','default':'#64748b'}};
+  var relC={{'rabobank':'#f59e0b','irb':'#f59e0b','avm':'#f59e0b','ai':'#a855f7','persoonlijk':'#06b6d4'}};
+
+  function nodeR(d){{return 22+(d.weight||3)*3.5;}}
+  function getRelColor(d){{
+    var rel=d.relevance||[];
+    var ord=['rabobank','irb','avm','ai','persoonlijk'];
+    for(var i=0;i<ord.length;i++){{if(rel.indexOf(ord[i])>=0)return relC[ord[i]];}}
+    return null;
+  }}
 
   var wrap=document.getElementById('kv-wrap-{uid}');
-  var W=wrap.clientWidth||680, H=370;
+  var W=wrap.clientWidth||700,H=420;
   var tip=document.getElementById('kv-tip-{uid}');
 
   var svg=d3.select('#kv-svg-{uid}')
@@ -1425,115 +1607,120 @@ FORMAAT — alleen dit JSON, geen uitleg, geen markdown:
     .attr('viewBox','0 0 '+W+' '+H)
     .style('opacity',0);
 
-  // Arrow markers — één per kleur
   var defs=svg.append('defs');
-  Object.entries(cm).forEach(function(e){{
-    defs.append('marker').attr('id','arr-{uid}-'+e[0])
-      .attr('viewBox','0 0 10 10').attr('refX',28).attr('refY',5)
+  Object.keys(cm).forEach(function(k){{
+    defs.append('marker').attr('id','arr-{uid}-'+k)
+      .attr('viewBox','0 0 10 10').attr('refX',46).attr('refY',5)
       .attr('markerWidth',6).attr('markerHeight',6).attr('orient','auto')
-      .append('path').attr('d','M0,0 L10,5 L0,10 z').attr('fill',e[1]).attr('opacity',.7);
+      .append('path').attr('d','M0,0 L10,5 L0,10 z').attr('fill',cm[k]).attr('opacity',.75);
   }});
 
   var sim=d3.forceSimulation(nodes)
-    .force('link',d3.forceLink(links).id(function(d){{return d.id;}}).distance(140))
-    .force('charge',d3.forceManyBody().strength(-420))
+    .force('link',d3.forceLink(links).id(function(d){{return d.id;}})
+      .distance(function(d){{return 180-(d.strength||3)*12;}}))
+    .force('charge',d3.forceManyBody().strength(-580))
     .force('center',d3.forceCenter(W/2,H/2))
-    .force('collision',d3.forceCollide(52));
+    .force('collision',d3.forceCollide(function(d){{return nodeR(d)+14;}}));
 
-  // Links
   var linkSel=svg.append('g').selectAll('line').data(links).join('line')
     .attr('stroke',function(d){{
       var src=nodes.find(function(n){{return n.id===(d.source.id||d.source);}});
-      return (src&&cm[src.group])||cm.default;
+      return(src&&cm[src.group])||cm.default;
     }})
-    .attr('stroke-opacity',.45).attr('stroke-width',2)
+    .attr('stroke-opacity',.55)
+    .attr('stroke-width',function(d){{return Math.max(1,Math.min(5,d.strength||2));}} )
     .attr('marker-end',function(d){{
       if(!d.directed)return null;
       var src=nodes.find(function(n){{return n.id===(d.source.id||d.source);}});
-      var g=(src&&src.group)||'default';
-      return 'url(#arr-{uid}-'+g+')';
+      return'url(#arr-{uid}-'+((src&&src.group)||'default')+')';
     }});
 
-  // Link labels
   var linkLbl=svg.append('g').selectAll('text').data(links).join('text')
     .text(function(d){{return d.label||'';}})
     .attr('font-size',9).attr('fill','#78716c').attr('text-anchor','middle')
-    .attr('dy',-4).style('pointer-events','none');
+    .attr('dy',-5).style('pointer-events','none');
 
-  // Node groups
   var nodeSel=svg.append('g').selectAll('g').data(nodes).join('g')
-    .style('cursor','grab')
+    .style('cursor','pointer')
     .call(d3.drag()
       .on('start',function(ev,d){{if(!ev.active)sim.alphaTarget(.3).restart();d.fx=d.x;d.fy=d.y;d3.select(this).style('cursor','grabbing');}})
       .on('drag',function(ev,d){{d.fx=ev.x;d.fy=ev.y;}})
-      .on('end',function(ev,d){{if(!ev.active)sim.alphaTarget(0);d.fx=null;d.fy=null;d3.select(this).style('cursor','grab');}})
-    );
+      .on('end',function(ev,d){{if(!ev.active)sim.alphaTarget(0);d.fx=null;d.fy=null;d3.select(this).style('cursor','pointer');}}));
 
-  // Pulserende achtergrondcirkel
-  nodeSel.append('circle').attr('r',42)
-    .attr('fill',function(d){{return (cm[d.group]||cm.default)+'11';}})
-    .attr('stroke','none');
+  nodeSel.append('circle').attr('r',function(d){{return nodeR(d)+10;}})
+    .attr('fill',function(d){{return(cm[d.group]||cm.default)+'11';}}).attr('stroke','none');
 
-  // Hoofd-cirkel
-  nodeSel.append('circle').attr('class','node-circle').attr('r',36)
-    .attr('fill',function(d){{return (cm[d.group]||cm.default)+'1e';}})
+  nodeSel.each(function(d){{
+    var rc=getRelColor(d);
+    if(rc)d3.select(this).append('circle')
+      .attr('r',function(d2){{return nodeR(d2)+4;}})
+      .attr('fill','none').attr('stroke',rc).attr('stroke-width',2.5).attr('stroke-dasharray','5,3');
+  }});
+
+  nodeSel.append('circle').attr('class','node-circle')
+    .attr('r',nodeR)
+    .attr('fill',function(d){{return(cm[d.group]||cm.default)+'22';}})
     .attr('stroke',function(d){{return cm[d.group]||cm.default;}})
-    .attr('stroke-width',2.2)
-    .style('transition','r .2s,stroke-width .2s');
+    .attr('stroke-width',2.5);
 
-  // Label — meerdere regels
   nodeSel.each(function(d){{
     var el=d3.select(this);
     var words=(d.label||d.id).split(' ');
-    var lh=14, oy=-(words.length-1)*lh/2;
+    var lh=13,oy=-(words.length-1)*lh/2;
     words.forEach(function(w,i){{
-      el.append('text')
-        .attr('text-anchor','middle').attr('dy',oy+i*lh+'.35em')
-        .attr('font-size',11).attr('font-weight',700)
+      el.append('text').attr('text-anchor','middle')
+        .attr('dy',(oy+i*lh)+'px').attr('font-size',10).attr('font-weight',700)
         .attr('fill',function(d2){{return cm[d2.group]||cm.default;}})
         .style('pointer-events','none').text(w);
     }});
   }});
 
-  // Hover
+  // Klik → scroll naar sectie in dagkrant
+  nodeSel.on('click',function(ev,d){{
+    ev.stopPropagation();
+    var tgts=d.articles&&d.articles.length?d.articles:[d.group];
+    var el=document.getElementById(tgts[0]);
+    if(el)el.scrollIntoView({{behavior:'smooth',block:'start'}});
+  }});
+
   nodeSel
     .on('mouseenter',function(ev,d){{
-      // Tooltip
+      var hist=d.history&&d.history.length
+        ?'<br><small style="color:#94a3b8;line-height:1.6">'+d.history.slice(0,3).join('<br>')+'</small>':'';
       tip.style.opacity='1';
-      tip.innerHTML='<strong>'+d.label+'</strong><br>'+(d.desc||'');
-      // Dim niet-verbonden
+      tip.innerHTML='<strong>'+d.label+'</strong><br>'+(d.desc||'')+hist;
       var conn=new Set([d.id]);
       links.forEach(function(l){{
-        var sid=l.source.id||l.source, tid=l.target.id||l.target;
-        if(sid===d.id)conn.add(tid);
-        if(tid===d.id)conn.add(sid);
+        var s=l.source.id||l.source,t=l.target.id||l.target;
+        if(s===d.id)conn.add(t);if(t===d.id)conn.add(s);
       }});
-      nodeSel.style('opacity',function(n){{return conn.has(n.id)?1:.18;}});
+      nodeSel.style('opacity',function(n){{return conn.has(n.id)?1:.1;}});
       linkSel.style('opacity',function(l){{
-        var sid=l.source.id||l.source,tid=l.target.id||l.target;
-        return(sid===d.id||tid===d.id)?.9:.06;
+        var s=l.source.id||l.source,t=l.target.id||l.target;
+        return(s===d.id||t===d.id)?1:.04;
       }});
       linkLbl.style('opacity',function(l){{
-        var sid=l.source.id||l.source,tid=l.target.id||l.target;
-        return(sid===d.id||tid===d.id)?1:0;
+        var s=l.source.id||l.source,t=l.target.id||l.target;
+        return(s===d.id||t===d.id)?1:0;
       }});
-      d3.select(this).select('.node-circle').attr('r',42).attr('stroke-width',3);
+      var r=nodeR(d);
+      d3.select(this).select('.node-circle').attr('r',r+7).attr('stroke-width',3.5);
     }})
     .on('mousemove',function(ev){{
       var r=wrap.getBoundingClientRect();
-      var tx=ev.clientX-r.left+14, ty=ev.clientY-r.top-10;
-      if(tx+240>W)tx=tx-240-28;
-      tip.style.left=tx+'px'; tip.style.top=ty+'px';
+      var tx=ev.clientX-r.left+14,ty=ev.clientY-r.top-10;
+      if(tx+265>W)tx=tx-265-28;
+      tip.style.left=tx+'px';tip.style.top=ty+'px';
     }})
-    .on('mouseleave',function(){{
+    .on('mouseleave',function(ev,d){{
       tip.style.opacity='0';
       nodeSel.style('opacity',1);
-      linkSel.style('opacity',.45);
+      linkSel.style('opacity',.55);
       linkLbl.style('opacity',1);
-      d3.select(this).select('.node-circle').attr('r',36).attr('stroke-width',2.2);
+      d3.select(this).select('.node-circle').attr('r',nodeR(d)).attr('stroke-width',2.5);
     }});
 
-  var pad=55;
+  var pad=65;
   sim.on('tick',function(){{
     linkSel
       .attr('x1',function(d){{return Math.max(pad,Math.min(W-pad,d.source.x));}})
@@ -1541,29 +1728,172 @@ FORMAAT — alleen dit JSON, geen uitleg, geen markdown:
       .attr('x2',function(d){{return Math.max(pad,Math.min(W-pad,d.target.x));}})
       .attr('y2',function(d){{return Math.max(pad,Math.min(H-pad,d.target.y));}});
     linkLbl
-      .attr('x',function(d){{return (d.source.x+d.target.x)/2;}})
-      .attr('y',function(d){{return (d.source.y+d.target.y)/2;}});
+      .attr('x',function(d){{return(d.source.x+d.target.x)/2;}})
+      .attr('y',function(d){{return(d.source.y+d.target.y)/2;}});
     nodeSel.attr('transform',function(d){{
-      return 'translate('+Math.max(pad,Math.min(W-pad,d.x))+','+Math.max(pad,Math.min(H-pad,d.y))+')';
+      return'translate('+Math.max(pad,Math.min(W-pad,d.x))+','+Math.max(pad,Math.min(H-pad,d.y))+')';
     }});
   }});
 
-  // Fade in na initieel settlement
   setTimeout(function(){{svg.transition().duration(700).style('opacity',1);}},500);
 
-  // Responsive resize
   window.addEventListener('resize',function(){{
     var nw=wrap.clientWidth;
-    if(Math.abs(nw-W)>20){{W=nw;svg.attr('width',W).attr('viewBox','0 0 '+W+' '+H);sim.force('center',d3.forceCenter(W/2,H/2)).alpha(.3).restart();}}
+    if(Math.abs(nw-W)>20){{
+      W=nw;svg.attr('width',W).attr('viewBox','0 0 '+W+' '+H);
+      sim.force('center',d3.forceCenter(W/2,H/2)).alpha(.3).restart();
+    }}
   }});
+
+  // Filter knoppen
+  document.querySelectorAll('#kv-filters-{uid} .kv-filter').forEach(function(btn){{
+    btn.addEventListener('click',function(){{
+      document.querySelectorAll('#kv-filters-{uid} .kv-filter')
+        .forEach(function(b){{b.classList.remove('kv-filter-active');}});
+      btn.classList.add('kv-filter-active');
+      var f=btn.getAttribute('data-filter');
+      nodeSel.style('opacity',function(d){{
+        if(f==='all')return 1;
+        var rel=d.relevance||[];
+        if(f==='rabobank'&&(rel.indexOf('rabobank')>=0||rel.indexOf('irb')>=0||rel.indexOf('avm')>=0))return 1;
+        if(f==='ai'&&(rel.indexOf('ai')>=0||d.group==='aitech'))return 1;
+        if(f===d.group)return 1;
+        return.08;
+      }});
+      linkSel.style('opacity',function(l){{
+        if(f==='all')return.55;
+        var s=nodes.find(function(n){{return n.id===(l.source.id||l.source);}});
+        var t=nodes.find(function(n){{return n.id===(l.target.id||l.target);}});
+        if(!s||!t)return.08;
+        var sv=f==='rabobank'?(s.relevance||[]).some(function(r){{return['rabobank','irb','avm'].indexOf(r)>=0;}}):
+               f==='ai'?((s.relevance||[]).indexOf('ai')>=0||s.group==='aitech'):s.group===f;
+        var tv=f==='rabobank'?(t.relevance||[]).some(function(r){{return['rabobank','irb','avm'].indexOf(r)>=0;}}):
+               f==='ai'?((t.relevance||[]).indexOf('ai')>=0||t.group==='aitech'):t.group===f;
+        return(sv||tv)?.55:.04;
+      }});
+    }});
+  }});
+
+  // Tijdlijn opbouwen
+  (function(){{
+    var tl=timeline||[];
+    var tlEl=document.getElementById('kv-tl-{uid}');
+    if(!tl.length||!tlEl)return;
+    tl.sort(function(a,b){{return a.datum.localeCompare(b.datum);}});
+    var html='<div class="kv-tl-title">📅 Historische tijdlijn</div><div class="kv-tl-events">';
+    tl.forEach(function(ev){{
+      var nd=nodes.find(function(n){{return n.id===ev.thema_id;}});
+      var color=(nd&&cm[nd.group])||cm.default;
+      var dd=ev.datum?ev.datum.slice(5):'';
+      html+='<div class="kv-tl-event">'
+        +'<span class="kv-tl-dot" style="background:'+color+'"></span>'
+        +'<span class="kv-tl-date">'+dd+'</span>'
+        +'<span class="kv-tl-evt">'+(ev.event||'')+'</span>'
+        +'</div>';
+    }});
+    html+='</div>';
+    tlEl.innerHTML=html;
+  }})();
 }})();
-</script></div>"""
+
+function kvAsk_{uid}(q){{
+  if(!q||!q.trim())return;
+  var ans=document.getElementById('kv-ans-{uid}');
+  var inp=document.getElementById('kv-inp-{uid}');
+  var body=document.getElementById('kv-cbody-{uid}');
+  if(body)body.style.display='block';
+  var arr=document.querySelector('#kv-chat-{uid} .kv-chat-arr');
+  if(arr)arr.textContent='▴';
+  ans.innerHTML='<div class="kv-loading">⏳ Claude analyseert...</div>';
+  if(inp)inp.value='';
+  fetch('http://127.0.0.1:7432/kruisverband-chat',{{
+    method:'POST',
+    headers:{{'Content-Type':'application/json'}},
+    body:JSON.stringify({{vraag:q.trim(),datum_iso:'{datum_iso}'}})
+  }}).then(function(r){{return r.json();}})
+  .then(function(data){{
+    if(data.antwoord){{
+      ans.innerHTML='<div class="kv-answer-text"><strong>Claude:</strong><br>'+data.antwoord+'</div>';
+    }}else{{
+      ans.innerHTML='<div class="kv-error">Fout: '+(data.error||'onbekend')+'</div>';
+    }}
+  }}).catch(function(){{
+    ans.innerHTML='<div class="kv-error">API niet bereikbaar — start api_server.py</div>';
+  }});
+}}
+</script>"""
 
                 CACHE[cache_key] = visual
                 self.send_json(200, {"visual_html": visual, "cached": False})
                 return
             except _json2.JSONDecodeError as e:
                 self.send_json(500, {"error": f"JSON parse fout: {e}"})
+                return
+            except subprocess.TimeoutExpired:
+                self.send_json(500, {"error": "Timeout (150s)"})
+                return
+            except Exception as e:
+                self.send_json(500, {"error": str(e)[:200]})
+                return
+
+        # ── /kruisverband-chat ────────────────────────────────────────────
+        if self.path == "/kruisverband-chat":
+            import json as _json3
+            vraag = (body.get("vraag") or "").strip()
+            datum_q = (body.get("datum_iso") or "").strip()
+
+            if not vraag:
+                self.send_json(400, {"error": "Veld 'vraag' is verplicht"})
+                return
+
+            ctx = KV_CONTEXT_CACHE.get(datum_q) or KV_CONTEXT_CACHE.get("latest") or {}
+            if not ctx:
+                self.send_json(400, {"error": "Geen kruisverband-context beschikbaar. Genereer eerst de visualisatie."})
+                return
+
+            graph_str = _json3.dumps(ctx.get("graph", {}), ensure_ascii=False)[:3000]
+            archief_str = (ctx.get("archief") or "")[:1200]
+            werk_str    = (ctx.get("werk") or "")[:600]
+            kv_str      = (ctx.get("kruisverband_md") or "")[:1500]
+            ctx_datum   = ctx.get("datum_iso", datum_q)
+
+            chat_prompt = f"""Je bent een nieuwsanalist voor Marc van Marrewijk (model validator bij Rabobank Utrecht: IRB/credit risk, CRR3, EBA, ECB EGIM, PD/LGD/CCF, Calcasa AVM). Interesses: AI/Claude, Formule 1, schaken.
+
+KRUISVERBAND-ANALYSE ({ctx_datum}):
+{kv_str}
+
+VERBANDEN-DIAGRAM (JSON):
+{graph_str}
+
+HISTORISCHE CONTEXT UIT ARCHIEF:
+{archief_str if archief_str else "(geen historische data beschikbaar)"}
+
+RABOBANK/IRB VAULT-CONTEXT:
+{werk_str if werk_str else "(geen werk-context beschikbaar)"}
+
+VRAAG VAN MARC:
+{vraag}
+
+Beantwoord in max 300 woorden in vloeiend Nederlands. Verwijs specifiek naar de verbanden en historische context. Wees analytisch en praktisch — Marc is expert in IRB/credit risk."""
+
+            try:
+                t0 = time.time()
+                print(f"  [API] KV-chat: '{vraag[:50]}…'", file=sys.stderr)
+                result = subprocess.run(
+                    ["claude", "-p", chat_prompt, "--model", CLAUDE_MODEL,
+                     "--dangerously-skip-permissions"],
+                    capture_output=True, text=True, timeout=90,
+                    stdin=subprocess.DEVNULL,
+                    cwd=str(Path.home() / "nieuwsstation"),
+                )
+                elapsed = time.time() - t0
+                print(f"  [API] KV-chat klaar in {elapsed:.0f}s", file=sys.stderr)
+
+                if result.returncode != 0:
+                    self.send_json(500, {"error": result.stderr[:200] or "Claude mislukt"})
+                    return
+
+                self.send_json(200, {"antwoord": result.stdout.strip(), "model": CLAUDE_MODEL})
                 return
             except subprocess.TimeoutExpired:
                 self.send_json(500, {"error": "Timeout (90s)"})
