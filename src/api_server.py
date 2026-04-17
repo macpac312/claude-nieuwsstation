@@ -1003,7 +1003,8 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         if self.path not in ("/background", "/article", "/translate",
                              "/notebooklm", "/generate-podcast", "/save-note",
-                             "/kruisverband-visual", "/kruisverband-chat"):
+                             "/kruisverband-visual", "/kruisverband-chat",
+                             "/vault-digest"):
             self.send_json(404, {"error": "Not found"})
             return
 
@@ -1351,6 +1352,68 @@ Sla op als plain tekst, geen code blocks."""
             })
             return
 
+        # ── /vault-digest ─────────────────────────────────────────────────
+        if self.path == "/vault-digest":
+            digest_name = (body.get("digest") or "").strip()
+            if not digest_name:
+                self.send_json(400, {"error": "Veld 'digest' is verplicht"})
+                return
+            if not digest_name.endswith(".md"):
+                digest_name += ".md"
+            digest_file = VAULT_PATH / "Briefings" / digest_name
+            if not digest_file.exists():
+                self.send_json(404, {"error": f"Digest niet gevonden: {digest_name}"})
+                return
+            try:
+                content = digest_file.read_text(encoding="utf-8")
+                datum = digest_name[:10]
+                # Strip YAML frontmatter
+                if content.startswith("---"):
+                    end = content.find("---", 3)
+                    if end > 0:
+                        content = content[end + 3:].strip()
+                # Eenvoudige markdown → HTML conversie voor digest
+                lines = content.split("\n")
+                html_lines = []
+                in_list = False
+                for line in lines:
+                    stripped = line.strip()
+                    if not stripped:
+                        if in_list:
+                            html_lines.append("</ul>"); in_list = False
+                        html_lines.append("")
+                        continue
+                    if stripped.startswith("## "):
+                        if in_list: html_lines.append("</ul>"); in_list = False
+                        html_lines.append(f'<h5>{stripped[3:]}</h5>')
+                    elif stripped.startswith("### "):
+                        if in_list: html_lines.append("</ul>"); in_list = False
+                        html_lines.append(f'<h5 style="font-size:.9rem">{stripped[4:]}</h5>')
+                    elif stripped.startswith("# "):
+                        if in_list: html_lines.append("</ul>"); in_list = False
+                        html_lines.append(f'<h4>{stripped[2:]}</h4>')
+                    elif stripped.startswith("- ") or stripped.startswith("* "):
+                        if not in_list:
+                            html_lines.append("<ul>"); in_list = True
+                        html_lines.append(f'<li>{stripped[2:]}</li>')
+                    elif stripped.startswith("**") and stripped.endswith("**"):
+                        if in_list: html_lines.append("</ul>"); in_list = False
+                        html_lines.append(f'<p><strong>{stripped[2:-2]}</strong></p>')
+                    else:
+                        if in_list: html_lines.append("</ul>"); in_list = False
+                        html_lines.append(f'<p>{stripped}</p>')
+                if in_list:
+                    html_lines.append("</ul>")
+                digest_html = (
+                    f'<div class="bg-byline">Dagkrant archief — {datum}</div>'
+                    + "\n".join(html_lines)
+                )
+                self.send_json(200, {"html": digest_html, "datum": datum})
+                return
+            except Exception as e:
+                self.send_json(500, {"error": str(e)[:200]})
+                return
+
         # ── /kruisverband-visual ──────────────────────────────────────────
         if self.path == "/kruisverband-visual":
             import uuid as _uuid2
@@ -1511,6 +1574,8 @@ REGELS:
 .kv-tl-date{{color:var(--t3,#64748b);font-size:.7rem;flex-shrink:0;min-width:2.8rem;font-variant-numeric:tabular-nums}}
 .kv-tl-evt{{color:var(--t2,#94a3b8);flex:1}}
 .kv-tl-link{{color:var(--accent,#3b82f6);text-decoration:none;font-size:.7rem;margin-left:.2rem}}
+.kv-tl-clickable{{border-radius:4px;padding:1px 3px;margin:-1px -3px;transition:background .15s}}
+.kv-tl-clickable:hover{{background:rgba(59,130,246,.1)}}
 .kv-chat{{margin-top:.7rem;border:1px solid var(--border,#334155);border-radius:10px;overflow:hidden}}
 .kv-chat-toggle{{width:100%;text-align:left;padding:.55rem 1rem;background:var(--card,#1e1e2e);border:none;cursor:pointer;color:var(--t1,#e2e8f0);font-size:.83rem;display:flex;justify-content:space-between;align-items:center}}
 .kv-chat-toggle:hover{{background:var(--card2,#26263a)}}
@@ -1675,12 +1740,29 @@ REGELS:
     }});
   }});
 
-  // Klik → scroll naar sectie in dagkrant
+  // Klik → open linker panel met node-context
   nodeSel.on('click',function(ev,d){{
     ev.stopPropagation();
-    var tgts=d.articles&&d.articles.length?d.articles:[d.group];
-    var el=document.getElementById(tgts[0]);
-    if(el)el.scrollIntoView({{behavior:'smooth',block:'start'}});
+    var histHtml=d.history&&d.history.length
+      ?'<h5 style="margin:1.2rem 0 .4rem">📅 Historisch</h5><ul style="padding-left:1.2rem;line-height:1.8">'
+        +d.history.map(function(h){{return'<li>'+h+'</li>';}}).join('')+'</ul>'
+      :'';
+    var tgt=(d.articles&&d.articles.length)?d.articles[0]:d.group;
+    var navHtml='<p style="margin-top:1.2rem"><a href="#" onclick="(function(){{closeKvLeftPanel();setTimeout(function(){{var e=document.getElementById(\''+tgt+'\');if(e)e.scrollIntoView({{behavior:\'smooth\',block:\'start\'}});}},380);}})();return false;" style="color:var(--accent,#3b82f6)">→ Ga naar sectie in dagkrant</a></p>';
+    var relBadge=(d.relevance&&d.relevance.length)
+      ?'<p style="margin:.4rem 0 .8rem"><span style="font-size:.7rem;padding:2px 8px;border-radius:12px;background:rgba(100,116,139,.15);color:var(--t3)">'+d.relevance.join(' · ')+'</span></p>'
+      :'';
+    var html='<h4 style="margin:0 0 .4rem">'+d.label+'</h4>'
+      +relBadge
+      +'<p style="color:var(--t2,#94a3b8);line-height:1.6">'+( d.desc||'')+'</p>'
+      +histHtml+navHtml;
+    if(typeof openKvLeftPanel==='function'){{
+      openKvLeftPanel(d.label, d.group+' · verbanden', html);
+    }}else{{
+      // Fallback: scroll
+      var el=document.getElementById(tgt);
+      if(el)el.scrollIntoView({{behavior:'smooth',block:'start'}});
+    }}
   }});
 
   nodeSel
@@ -1780,19 +1862,32 @@ REGELS:
     var tlEl=document.getElementById('kv-tl-{uid}');
     if(!tl.length||!tlEl)return;
     tl.sort(function(a,b){{return a.datum.localeCompare(b.datum);}});
-    var html='<div class="kv-tl-title">📅 Historische tijdlijn</div><div class="kv-tl-events">';
+    var html='<div class="kv-tl-title">📅 Historische tijdlijn — klik voor volledige dagkrant</div><div class="kv-tl-events">';
     tl.forEach(function(ev){{
       var nd=nodes.find(function(n){{return n.id===ev.thema_id;}});
       var color=(nd&&cm[nd.group])||cm.default;
       var dd=ev.datum?ev.datum.slice(5):'';
-      html+='<div class="kv-tl-event">'
+      var evtTxt=(ev.event||'');
+      var digestAttr=ev.digest?'data-digest="'+ev.digest+'" data-title="'+evtTxt.replace(/"/g,'&quot;')+'"':'';
+      var cursor=ev.digest?'cursor:pointer;':'';
+      var hoverCls=ev.digest?'kv-tl-event kv-tl-clickable':'kv-tl-event';
+      html+='<div class="'+hoverCls+'" '+digestAttr+' style="'+cursor+'">'
         +'<span class="kv-tl-dot" style="background:'+color+'"></span>'
         +'<span class="kv-tl-date">'+dd+'</span>'
-        +'<span class="kv-tl-evt">'+(ev.event||'')+'</span>'
+        +'<span class="kv-tl-evt">'+evtTxt+'</span>'
+        +(ev.digest?'<span class="kv-tl-link" title="Open archief">↗</span>':'')
         +'</div>';
     }});
     html+='</div>';
     tlEl.innerHTML=html;
+    // Klik-handler voor tijdlijn-items
+    tlEl.querySelectorAll('.kv-tl-clickable').forEach(function(el){{
+      el.addEventListener('click',function(){{
+        var d=el.getAttribute('data-digest');
+        var t=el.getAttribute('data-title');
+        if(d&&typeof openKvDigest==='function')openKvDigest(d,t);
+      }});
+    }});
   }})();
 }})();
 
